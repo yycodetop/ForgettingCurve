@@ -1,0 +1,20 @@
+[
+  {
+    "name": "七年级下一单元",
+    "type": "word",
+    "icon": "fas fa-graduation-cap",
+    "id": "1771134130878"
+  },
+  {
+    "id": "1771136014585",
+    "name": "七年级下二单元",
+    "type": "word",
+    "icon": "fas fa-graduation-cap"
+  },
+  {
+    "id": "1771137396740",
+    "name": "七年级短语",
+    "type": "phrase",
+    "icon": "fas fa-book"
+  }
+]

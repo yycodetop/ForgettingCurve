@@ -1,0 +1,674 @@
+[
+  {
+    "id": 1771246979704,
+    "word": "hello",
+    "pos": "n.",
+    "meaning": "你好",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-16",
+    "phonetic": "/həˈləʊ/"
+  },
+  {
+    "id": 1771137538633.5537,
+    "word": "go over",
+    "pos": "phrase",
+    "meaning": "复习; 练习",
+    "type": "phrase",
+    "bookId": "1771137396740",
+    "addedAt": "2026-02-15"
+  },
+  {
+    "id": 1771137538633.2136,
+    "word": "look forward to",
+    "pos": "phrase",
+    "meaning": "盼望",
+    "type": "phrase",
+    "bookId": "1771137396740",
+    "addedAt": "2026-02-15"
+  },
+  {
+    "id": 1771137538633.6204,
+    "word": "make friends",
+    "pos": "phrase",
+    "meaning": "交朋友",
+    "type": "phrase",
+    "bookId": "1771137396740",
+    "addedAt": "2026-02-15"
+  },
+  {
+    "id": 1771137538633.8794,
+    "word": "enjoy oneself",
+    "pos": "phrase",
+    "meaning": "过得愉快",
+    "type": "phrase",
+    "bookId": "1771137396740",
+    "addedAt": "2026-02-15"
+  },
+  {
+    "id": 1771137538633.1257,
+    "word": "take a walk",
+    "pos": "phrase",
+    "meaning": "散步",
+    "type": "phrase",
+    "bookId": "1771137396740",
+    "addedAt": "2026-02-15"
+  },
+  {
+    "id": 1771137538633.1396,
+    "word": "May Day",
+    "pos": "phrase",
+    "meaning": "五一劳动节",
+    "type": "phrase",
+    "bookId": "1771137396740",
+    "addedAt": "2026-02-15"
+  },
+  {
+    "id": 1771137538633.9082,
+    "word": "summer holiday",
+    "pos": "phrase",
+    "meaning": "暑假",
+    "type": "phrase",
+    "bookId": "1771137396740",
+    "addedAt": "2026-02-15"
+  },
+  {
+    "id": 1771136022010.6816,
+    "word": "play",
+    "pos": "v.",
+    "meaning": "演奏; 弹奏",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/pleɪ/"
+  },
+  {
+    "id": 1771136022010.8396,
+    "word": "tennis",
+    "pos": "n.",
+    "meaning": "网球",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈtɛn.ɪs/"
+  },
+  {
+    "id": 1771136022010.449,
+    "word": "piano",
+    "pos": "n.",
+    "meaning": "钢琴",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/piˈænoʊ/"
+  },
+  {
+    "id": 1771136022010.49,
+    "word": "ride",
+    "pos": "v.",
+    "meaning": "(rode) 骑; 乘",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ɹaɪd/"
+  },
+  {
+    "id": 1771136022010.8774,
+    "word": "club",
+    "pos": "n.",
+    "meaning": "俱乐部",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/klʌb/"
+  },
+  {
+    "id": 1771136022010.2336,
+    "word": "term",
+    "pos": "n.",
+    "meaning": "学期",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/tɜːm/"
+  },
+  {
+    "id": 1771136022010.8357,
+    "word": "board",
+    "pos": "n.",
+    "meaning": "布告板",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/bɔːd/"
+  },
+  {
+    "id": 1771136022010.5938,
+    "word": "well",
+    "pos": "int.",
+    "meaning": "噢; 呢",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/wɛl/"
+  },
+  {
+    "id": 1771136022010.2214,
+    "word": "all",
+    "pos": "adj.",
+    "meaning": "所有的; 全部的",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ɔːl/"
+  },
+  {
+    "id": 1771136022010.6213,
+    "word": "worry",
+    "pos": "v.",
+    "meaning": "焦虑; 担心",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈwɒɹi/"
+  },
+  {
+    "id": 1771136022010.7778,
+    "word": "teach",
+    "pos": "v.",
+    "meaning": "(taught) 教; 讲",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/tiːt͡ʃ/"
+  },
+  {
+    "id": 1771136022010.1667,
+    "word": "then",
+    "pos": "adv.",
+    "meaning": "那么; 就",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ðen/"
+  },
+  {
+    "id": 1771136022010.7253,
+    "word": "monitor",
+    "pos": "n.",
+    "meaning": "班长; 监督员",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈmɒnɨtə/"
+  },
+  {
+    "id": 1771136022010.8354,
+    "word": "start",
+    "pos": "n.",
+    "meaning": "开始; 开端",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/stɑːt/"
+  },
+  {
+    "id": 1771136022010.5361,
+    "word": "ready",
+    "pos": "adj.",
+    "meaning": "乐意的",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈɹɛdi/"
+  },
+  {
+    "id": 1771136022010.3745,
+    "word": "promise",
+    "pos": "v.",
+    "meaning": "承诺; 保证",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈpɹɒmɪs/"
+  },
+  {
+    "id": 1771136022010.8696,
+    "word": "fast",
+    "pos": "adj.",
+    "meaning": "快地; 快的",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/fɑːst/"
+  },
+  {
+    "id": 1771136022010.614,
+    "word": "fit",
+    "pos": "adj.",
+    "meaning": "健康的; 强健的",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/fɪt/"
+  },
+  {
+    "id": 1771136022010.0718,
+    "word": "just",
+    "pos": "adv.",
+    "meaning": "就; 正好",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/d͡ʒʌst/"
+  },
+  {
+    "id": 1771136022010.9348,
+    "word": "ball",
+    "pos": "n.",
+    "meaning": "球; 球类游戏",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/bɔːl/"
+  },
+  {
+    "id": 1771136022010.8567,
+    "word": "game",
+    "pos": "n.",
+    "meaning": "运动项目",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ɡeɪm/"
+  },
+  {
+    "id": 1771136022010.5925,
+    "word": "team",
+    "pos": "n.",
+    "meaning": "队伍; 球队",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/tiːm/"
+  },
+  {
+    "id": 1771136022010.951,
+    "word": "best",
+    "pos": "adj.",
+    "meaning": "最好的",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈbɛst/"
+  },
+  {
+    "id": 1771136022010.0854,
+    "word": "score",
+    "pos": "n.",
+    "meaning": "得分; 成绩",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/skɔː/"
+  },
+  {
+    "id": 1771136022010.9927,
+    "word": "tidy",
+    "pos": "adj.",
+    "meaning": "整洁的; 收拾",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈtaɪdi/"
+  },
+  {
+    "id": 1771136022010.0813,
+    "word": "sure",
+    "pos": "adj.",
+    "meaning": "确信的; 有把握的",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ʃoː/"
+  },
+  {
+    "id": 1771136022010.9004,
+    "word": "everybody",
+    "pos": "pron.",
+    "meaning": "每个人",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈɛvɹibɒdi/"
+  },
+  {
+    "id": 1771136022010.6824,
+    "word": "beautiful",
+    "pos": "adj.",
+    "meaning": "美的; 美丽的",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈbjuːtɪfəl/"
+  },
+  {
+    "id": 1771136022010.1943,
+    "word": "fly",
+    "pos": "v.",
+    "meaning": "(flew) 放飞; 飞行",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/flaɪ/"
+  },
+  {
+    "id": 1771136022010.9197,
+    "word": "kite",
+    "pos": "n.",
+    "meaning": "风筝",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15"
+  },
+  {
+    "id": 1771136022010.9321,
+    "word": "swim",
+    "pos": "v.",
+    "meaning": "(swam) 游泳",
+    "type": "word",
+    "bookId": "1771136014585",
+    "addedAt": "2026-02-15",
+    "phonetic": "/swɪm/"
+  },
+  {
+    "id": 1771135849591.4468,
+    "word": "crayon",
+    "pos": "n.",
+    "meaning": "蜡笔",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈkɹeɪ.ɒ̃/"
+  },
+  {
+    "id": 1771135849591.9028,
+    "word": "eraser",
+    "pos": "n.",
+    "meaning": "橡皮擦",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ɪˈɹeɪzə/"
+  },
+  {
+    "id": 1771135849591.0557,
+    "word": "glove",
+    "pos": "n.",
+    "meaning": "手套",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ɡlʌv/"
+  },
+  {
+    "id": 1771135849591.515,
+    "word": "wallet",
+    "pos": "n.",
+    "meaning": "钱包",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈwɒlɪt/"
+  },
+  {
+    "id": 1771135849591.0527,
+    "word": "watch",
+    "pos": "n.",
+    "meaning": "表; (通常指)手表",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/wɒt͡ʃ/"
+  },
+  {
+    "id": 1771135849591.123,
+    "word": "whose",
+    "pos": "pron.",
+    "meaning": "谁的",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/huːz/"
+  },
+  {
+    "id": 1771135849591.8364,
+    "word": "lose",
+    "pos": "v.",
+    "meaning": "(lost) 失去",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/luːz/"
+  },
+  {
+    "id": 1771135849591.1072,
+    "word": "find",
+    "pos": "v.",
+    "meaning": "(found) 发现; 找到",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/faɪnd/"
+  },
+  {
+    "id": 1771135849591.5583,
+    "word": "mine",
+    "pos": "pron.",
+    "meaning": "我的",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/maɪn/"
+  },
+  {
+    "id": 1771135849591.5837,
+    "word": "yours",
+    "pos": "pron.",
+    "meaning": "你(们)的",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/jɔː(ɹ)z/"
+  },
+  {
+    "id": 1771135849591.959,
+    "word": "tape",
+    "pos": "n.",
+    "meaning": "录音带; 录像带",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/teɪ̯p/"
+  },
+  {
+    "id": 1771135849591.78,
+    "word": "purple",
+    "pos": "adj.",
+    "meaning": "紫色的; 紫红色",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈpɜː(ɹ).pəl/"
+  },
+  {
+    "id": 1771135849591.8054,
+    "word": "hers",
+    "pos": "pron.",
+    "meaning": "她的",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/əz/"
+  },
+  {
+    "id": 1771135849591.5688,
+    "word": "careful",
+    "pos": "adj.",
+    "meaning": "仔细的; 认真的",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈkɛːfəl/"
+  },
+  {
+    "id": 1771135849591.435,
+    "word": "on",
+    "pos": "adv.",
+    "meaning": "从某时刻起",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ɒn/"
+  },
+  {
+    "id": 1771135849591.2568,
+    "word": "camera",
+    "pos": "n.",
+    "meaning": "照相机",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈkæməɹə/"
+  },
+  {
+    "id": 1771135849591.3418,
+    "word": "phone",
+    "pos": "n.",
+    "meaning": "电话; 电话机",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/fəʊ̯n/"
+  },
+  {
+    "id": 1771135849591.7908,
+    "word": "leave",
+    "pos": "v.",
+    "meaning": "(left) 丢下; 遗忘",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/liːv/"
+  },
+  {
+    "id": 1771135849591.9202,
+    "word": "plane",
+    "pos": "n.",
+    "meaning": "飞机",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/pleɪn/"
+  },
+  {
+    "id": 1771135849591.0938,
+    "word": "taxi",
+    "pos": "n.",
+    "meaning": "出租车",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈtæk.si/"
+  },
+  {
+    "id": 1771135849591.1692,
+    "word": "why",
+    "pos": "adv.",
+    "meaning": "为什么",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/waɪ/"
+  },
+  {
+    "id": 1771135849591.4878,
+    "word": "airport",
+    "pos": "n.",
+    "meaning": "机场; 航空港",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈɛə.pɔːt/"
+  },
+  {
+    "id": 1771135849591.653,
+    "word": "hundred",
+    "pos": "num.",
+    "meaning": "百",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈhʌndɚd/"
+  },
+  {
+    "id": 1771135849591.2903,
+    "word": "thousand",
+    "pos": "num.",
+    "meaning": "千",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈθaʊzənd/"
+  },
+  {
+    "id": 1771135849591.8604,
+    "word": "strange",
+    "pos": "adj.",
+    "meaning": "奇怪的",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈstɹeɪnd͡ʒ/"
+  },
+  {
+    "id": 1771135849591.8298,
+    "word": "boat",
+    "pos": "n.",
+    "meaning": "船",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/bəʊt/"
+  },
+  {
+    "id": 1771135849591.8452,
+    "word": "duck",
+    "pos": "n.",
+    "meaning": "鸭",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/dʌk/"
+  },
+  {
+    "id": 1771135849591.9453,
+    "word": "pig",
+    "pos": "n.",
+    "meaning": "猪",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈpɪɡ/"
+  },
+  {
+    "id": 1771135849591.7876,
+    "word": "sausage",
+    "pos": "n.",
+    "meaning": "香肠; 腊肠",
+    "type": "word",
+    "bookId": "1771134130878",
+    "addedAt": "2026-02-15",
+    "phonetic": "/ˈsɑsɪd͡ʒ/"
+  }
+]
