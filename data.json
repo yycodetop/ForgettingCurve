@@ -1,5 +1,52 @@
 {
-  "tasks": [],
+  "tasks": [
+    {
+      "id": 1771294457996,
+      "title": "任务测试",
+      "category": "数学",
+      "type": "ebbinghaus",
+      "startDate": "2026-02-16",
+      "schedule": [
+        {
+          "stage": 0,
+          "interval": 0,
+          "date": "2026-02-16",
+          "completed": false
+        },
+        {
+          "stage": 1,
+          "interval": 1,
+          "date": "2026-02-17",
+          "completed": false
+        },
+        {
+          "stage": 2,
+          "interval": 2,
+          "date": "2026-02-18",
+          "completed": true,
+          "quality": "SS"
+        },
+        {
+          "stage": 3,
+          "interval": 4,
+          "date": "2026-02-20",
+          "completed": false
+        },
+        {
+          "stage": 4,
+          "interval": 7,
+          "date": "2026-02-23",
+          "completed": false
+        },
+        {
+          "stage": 5,
+          "interval": 15,
+          "date": "2026-03-03",
+          "completed": false
+        }
+      ]
+    }
+  ],
   "categories": [
     "英语",
     "数学",
