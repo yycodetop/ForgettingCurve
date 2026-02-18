@@ -1,6 +1,7 @@
 /**
  * js/main.js
- * 应用主入口 - 迭代版 v2.0
+ * 应用主入口 - 迭代版 v2.1
+ * 修复：监听 ConceptApp 的 refresh 事件，实现 Excel 导入后自动刷新数据
  */
 import { createApp, ref, computed, onMounted } from 'vue';
 
@@ -93,7 +94,7 @@ const app = createApp({
                 @add-concept="addConcept"
                 @update-concept="handleUpdateConcept"   
                 @delete-concept="deleteConcept"
-                @import-excel="handleConceptImport"
+                @refresh="loadConcepts"
                 @back-home="currentApp = 'dashboard'"
             ></concept-app>
 
@@ -255,10 +256,15 @@ const app = createApp({
             taskModule.postponeTask(taskId, stage, days);
         };
 
+        // 注意：新版 ConceptApp 内部直接处理上传并触发 refresh 事件，
+        // 这里的 handleConceptImport 可能不再被 ConceptApp 的 Excel 按钮使用，
+        // 但保留以兼容其他可能的调用方式。
         const handleConceptImport = async (file) => {
             try {
                 const result = await conceptModule.importConceptsFromExcel(file, 'cloze');
                 alert(`导入完成！\n成功: ${result.success} 条\n跳过: ${result.skipped} 条 (格式错误或缺少数据)`);
+                // 手动触发刷新
+                await conceptModule.loadConcepts();
             } catch (e) {
                 console.error(e);
                 alert("导入失败，请检查文件格式。\n需要包含: 年级 | 课程 | 原句(含{{关键词}})");
@@ -271,10 +277,8 @@ const app = createApp({
             setTimeout(() => { conceptInitialAction.value = null; }, 500);
         };
         
-        // [新增] 处理从 Dashboard 直接添加概念
         const handleDashboardAddConcept = (newConcept) => {
             conceptModule.addConcept(newConcept);
-            // 这里可以加一个简单的 Toast 提示成功，暂省略
         };
 
         const handleUpdateConcept = (id, data) => {
@@ -282,19 +286,16 @@ const app = createApp({
         };
 
         return {
-            // 状态
             currentApp,
             englishTasks,
             recitationData, 
             conceptInitialAction,
             
-            // 展开各模块状态与方法
             ...taskModule,
             ...vocabModule,
             ...pomodoroModule,
             ...conceptModule, 
             
-            // 手动绑定的处理函数
             handleAddWord,
             handleRecitationRequest,
             handlePostponeTask,

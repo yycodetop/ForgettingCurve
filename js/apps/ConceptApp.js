@@ -1,17 +1,16 @@
 /**
  * js/apps/ConceptApp.js
  * 概念学习通用应用框架
- * 迭代 v2.5: 
- * 1. 集成 Excel 导入/导出完整模块
- * 2. 提供 "下载模板" 按钮
- * 3. 导入支持字段：学科、年级、标题、内容
- * 4. 保持复习模式与沉浸式背诵功能
+ * 迭代 v2.6: 
+ * 1. UI 调整：将 Excel 模板下载与导入入口移至主界面顶部操作栏，与“新建卡片”平级
+ * 2. 仅在“挖空填空 (cloze)”模式下显示导入/导出按钮
+ * 3. 保持复习模式、沉浸背诵、答题卡等核心功能
  */
 import { ref, computed, nextTick, onUnmounted, watch } from 'vue';
 
 export default {
     props: ['mode', 'concepts', 'subjects', 'grades', 'initialAction'], 
-    // 新增 'refresh' 事件，用于通知父组件数据已更新（如导入后）
+    // 确保父组件监听 'refresh' 事件以重新加载数据
     emits: ['add-concept', 'update-concept', 'delete-concept', 'back-home', 'import-excel', 'refresh'],
     template: `
     <div class="h-full flex gap-6 animate-fade-in relative">
@@ -52,9 +51,23 @@ export default {
                     </h3>
                     <p class="text-xs text-slate-400">{{ modeConfig.subtitle }}</p>
                 </div>
-                <button @click="openAddModal(null)" class="px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 flex items-center gap-2" :class="modeConfig.btnClass">
-                    <i class="fas fa-plus"></i> 新建卡片
-                </button>
+                
+                <div class="flex items-center gap-3">
+                    <div v-if="mode === 'cloze'" class="flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
+                        <button @click="downloadTemplate" class="px-3 py-2 bg-white text-slate-500 hover:text-indigo-600 hover:bg-slate-50 font-bold rounded-xl shadow-sm border border-slate-200 transition flex items-center gap-2 text-xs">
+                            <i class="fas fa-download"></i> <span class="hidden lg:inline">下载模板</span>
+                        </button>
+                        <label class="px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl shadow-sm border border-emerald-100 transition flex items-center gap-2 text-xs cursor-pointer relative overflow-hidden group">
+                            <i class="fas fa-file-excel"></i> <span class="hidden lg:inline">导入题目</span>
+                            <div class="absolute inset-0 bg-emerald-200 opacity-0 group-hover:opacity-20 transition"></div>
+                            <input type="file" accept=".xlsx, .xls" class="hidden" @change="handleFileUpload">
+                        </label>
+                    </div>
+
+                    <button @click="openAddModal(null)" class="px-6 py-2.5 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 flex items-center gap-2" :class="modeConfig.btnClass">
+                        <i class="fas fa-plus"></i> 新建卡片
+                    </button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto custom-scrollbar p-1">
@@ -110,16 +123,7 @@ export default {
             <div class="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 scale-up max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-xl font-bold text-slate-800">{{ isEditing ? '编辑' : '新建' }} {{ modeConfig.title }}</h3>
-                    
-                    <div v-if="mode === 'cloze' && !isEditing" class="flex items-center gap-2">
-                        <button @click="downloadTemplate" class="text-xs bg-slate-100 text-slate-500 hover:bg-slate-200 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1" title="下载导入模板">
-                            <i class="fas fa-download"></i> 模板
-                        </button>
-                        <label class="cursor-pointer bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 border border-emerald-100">
-                            <i class="fas fa-file-excel"></i> 导入
-                            <input type="file" accept=".xlsx, .xls" class="hidden" @change="handleFileUpload">
-                        </label>
-                    </div>
+                    <button @click="showAddModal=false" class="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
                 </div>
                 
                 <div class="space-y-4">
