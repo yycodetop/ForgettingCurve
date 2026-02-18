@@ -85,10 +85,16 @@
                 @download="downloadTemplate"
             ></english-app>
 
-            <div v-if="['math','code'].includes(currentApp)" class="h-full flex items-center justify-center flex-col text-slate-400">
-                <div class="text-6xl mb-4 animate-bounce">🚧</div>
-                <h3 class="font-bold text-xl">独立模块建设中...</h3>
-            </div>
+            <concept-app v-if="['cloze', 'image', 'feynman'].includes(currentApp)"
+                :mode="currentApp"
+                :concepts="getConceptsByType(currentApp)"
+                :subjects="categories"
+                :grades="grades"
+                :initial-action="conceptInitialAction"  @add-concept="addConcept"
+                @update-concept="handleUpdateConcept"   @delete-concept="deleteConcept"
+                @import-excel="handleConceptImport"
+                @back-home="currentApp = 'dashboard'"
+            ></concept-app>
 
         </main>
 

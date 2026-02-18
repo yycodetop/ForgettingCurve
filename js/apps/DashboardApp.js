@@ -1,17 +1,19 @@
 /**
  * js/apps/DashboardApp.js
- * 综合概览 - 确认已包含修复后的状态逻辑
+ * 综合概览 - 完整版
+ * 集成：概念知识库快捷入口(含快速新建)、任务分布交互、任务列表高级操作(延期/防作弊)
  */
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
 
 export default {
     props: ['calendarDays', 'currentDayTasks', 'selectedDate', 'startDayOfWeek', 'categories', 'chartData', 'allTasks'], 
-    emits: ['selectDate', 'openPomodoro', 'openRate', 'editTask', 'deleteTask', 'addCategory', 'deleteCategory', 'postponeTask'],
+    emits: ['selectDate', 'openPomodoro', 'openRate', 'editTask', 'deleteTask', 'addCategory', 'deleteCategory', 'postponeTask', 'switchApp', 'quickAddConcept'], 
     template: `
     <div class="h-full flex flex-col gap-6 animate-fade-in pb-4 relative">
         
         <div class="flex gap-6 h-64 shrink-0">
-            <div class="w-1/3 bg-white rounded-3xl shadow-sm border border-slate-100 p-4 relative flex flex-col overflow-hidden group">
+            
+            <div class="w-1/4 bg-white rounded-3xl shadow-sm border border-slate-100 p-4 relative flex flex-col overflow-hidden group">
                 <div class="flex justify-between items-center mb-2 px-2 shrink-0">
                     <h3 class="font-bold text-slate-700"><i class="fas fa-chart-pie mr-2 text-indigo-500"></i>任务分布</h3>
                     <button @click="showCategoryModal=true" class="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded text-slate-500 transition"><i class="fas fa-cog mr-1"></i>分类</button>
@@ -24,22 +26,54 @@ export default {
                 </div>
             </div>
 
-            <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 p-4 flex flex-col overflow-hidden">
-                <h3 class="font-bold text-slate-700 mb-2 px-2 shrink-0"><i class="fas fa-chart-bar mr-2 text-emerald-500"></i>近7天学习动能</h3>
-                <div class="flex-1 w-full h-full relative min-h-0">
-                    <div ref="barChartRef" class="absolute inset-0"></div>
+            <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 p-5 flex flex-col">
+                <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="fas fa-brain text-rose-500"></i> 概念知识库
+                    <span class="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-400">Concept Studio</span>
+                </h3>
+                <div class="flex gap-4 h-full">
+                    <div class="flex-1 relative group">
+                        <button @click="$emit('switchApp', 'cloze')" class="w-full h-full bg-amber-50 hover:bg-amber-100 border border-amber-100 rounded-2xl p-4 text-left transition relative overflow-hidden">
+                            <div class="absolute right-0 bottom-0 text-6xl text-amber-200 opacity-20 transform translate-x-2 translate-y-2 group-hover:scale-110 transition"><i class="fas fa-highlighter"></i></div>
+                            <div class="w-10 h-10 rounded-lg bg-amber-500 text-white flex items-center justify-center text-lg mb-3 shadow-md shadow-amber-200"><i class="fas fa-highlighter"></i></div>
+                            <div class="font-bold text-slate-800">挖空填空</div>
+                            <div class="text-xs text-slate-500 mt-1">记忆定义与关键词</div>
+                        </button>
+                        <button @click.stop="$emit('quickAddConcept', 'cloze')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-amber-500 hover:text-amber-600 hover:bg-amber-50 shadow-sm border border-amber-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex-1 relative group">
+                        <button @click="$emit('switchApp', 'image')" class="w-full h-full bg-pink-50 hover:bg-pink-100 border border-pink-100 rounded-2xl p-4 text-left transition relative overflow-hidden">
+                            <div class="absolute right-0 bottom-0 text-6xl text-pink-200 opacity-20 transform translate-x-2 translate-y-2 group-hover:scale-110 transition"><i class="fas fa-image"></i></div>
+                            <div class="w-10 h-10 rounded-lg bg-pink-500 text-white flex items-center justify-center text-lg mb-3 shadow-md shadow-pink-200"><i class="fas fa-image"></i></div>
+                            <div class="font-bold text-slate-800">图片遮挡</div>
+                            <div class="text-xs text-slate-500 mt-1">地理与生物结构</div>
+                        </button>
+                         <button @click.stop="$emit('quickAddConcept', 'image')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-pink-500 hover:text-pink-600 hover:bg-pink-50 shadow-sm border border-pink-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建"><i class="fas fa-plus"></i></button>
+                    </div>
+
+                    <div class="flex-1 relative group">
+                        <button @click="$emit('switchApp', 'feynman')" class="w-full h-full bg-cyan-50 hover:bg-cyan-100 border border-cyan-100 rounded-2xl p-4 text-left transition relative overflow-hidden">
+                            <div class="absolute right-0 bottom-0 text-6xl text-cyan-200 opacity-20 transform translate-x-2 translate-y-2 group-hover:scale-110 transition"><i class="fas fa-chalkboard-teacher"></i></div>
+                            <div class="w-10 h-10 rounded-lg bg-cyan-500 text-white flex items-center justify-center text-lg mb-3 shadow-md shadow-cyan-200"><i class="fas fa-chalkboard-teacher"></i></div>
+                            <div class="font-bold text-slate-800">费曼自测</div>
+                            <div class="text-xs text-slate-500 mt-1">深度理解与复述</div>
+                        </button>
+                         <button @click.stop="$emit('quickAddConcept', 'feynman')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-cyan-500 hover:text-cyan-600 hover:bg-cyan-50 shadow-sm border border-cyan-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建"><i class="fas fa-plus"></i></button>
+                    </div>
                 </div>
             </div>
 
-            <div class="w-48 flex flex-col gap-4 shrink-0">
-                <div class="flex-1 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl shadow-lg shadow-indigo-200 text-white p-5 flex flex-col justify-center items-center relative overflow-hidden group">
-                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-110 transition duration-700"></div>
-                    <div class="text-4xl font-black mb-1 tabular-nums">{{ chartData.completionRate }}<span class="text-xl">%</span></div>
-                    <div class="text-xs font-bold opacity-80 uppercase tracking-widest">总体完成率</div>
-                </div>
+             <div class="w-40 flex flex-col gap-4 shrink-0">
                  <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 p-5 flex flex-col justify-center items-center">
                     <div class="text-3xl font-black text-slate-700 mb-1 tabular-nums">{{ currentDayTasks.length }}</div>
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">今日任务数</div>
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">今日任务</div>
+                </div>
+                 <div class="flex-1 bg-slate-800 rounded-3xl shadow-lg shadow-slate-200 text-white p-5 flex flex-col justify-center items-center">
+                    <div class="text-3xl font-black mb-1 tabular-nums">{{ chartData.completionRate }}<span class="text-lg">%</span></div>
+                    <div class="text-xs font-bold opacity-60 uppercase tracking-widest text-center">完成率</div>
                 </div>
             </div>
         </div>
@@ -112,7 +146,7 @@ export default {
                                 <button v-if="!item.completed && item.type === 'ebbinghaus' && item.date >= todayStr" 
                                         @click="handlePostpone(item)" 
                                         class="text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded-md font-bold hover:bg-amber-100 transition flex items-center gap-1" 
-                                        title="延期该阶段及后续计划">
+                                        title="延期">
                                     <i class="fas fa-clock text-[10px]"></i> 延期
                                 </button>
 
@@ -216,20 +250,20 @@ export default {
         const todayStr = new Date().toISOString().split('T')[0];
         
         const pieChartRef = ref(null);
-        const barChartRef = ref(null);
         let pieChart = null;
-        let barChart = null;
         
         const showCategoryModal = ref(false);
         const newCatName = ref('');
         const showSubjectModal = ref(false);
         const selectedSubject = ref('');
 
+        // 计算选中学科的任务
         const subjectTasks = computed(() => {
             if (!selectedSubject.value || !props.allTasks) return [];
             return props.allTasks.filter(t => t.category === selectedSubject.value).sort((a,b) => b.id - a.id);
         });
 
+        // 任务延期处理
         const handlePostpone = (item) => {
             const days = prompt("🕒 任务延期\n\n请输入需要延后的天数 (例如 1):", "1");
             if (days !== null) {
@@ -241,14 +275,15 @@ export default {
             }
         };
 
+        // --- ECharts 逻辑 ---
         const initCharts = () => {
             if (pieChartRef.value && !pieChart) {
                 pieChart = echarts.init(pieChartRef.value);
                 pieChart.on('click', (params) => { selectedSubject.value = params.name; showSubjectModal.value = true; });
             }
-            if (barChartRef.value && !barChart) { barChart = echarts.init(barChartRef.value); }
-            updatePieChart(); updateBarChart();
+            updatePieChart();
         };
+
         const updatePieChart = () => {
             if (!pieChart) return;
             pieChart.setOption({
@@ -265,29 +300,25 @@ export default {
                 }]
             });
         };
-        const updateBarChart = () => {
-            if (!barChart) return;
-            barChart.setOption({
-                tooltip: { trigger: 'axis' },
-                grid: { top: '10%', left: '3%', right: '4%', bottom: '3%', containLabel: true },
-                xAxis: { type: 'category', data: props.chartData.weeklyLabels, axisLine: { lineStyle: { color: '#cbd5e1' } }, axisLabel: { color: '#64748b' } },
-                yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } } },
-                series: [{
-                    data: props.chartData.weeklyValues,
-                    type: 'bar',
-                    barWidth: '40%',
-                    itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: '#10b981' }, { offset: 1, color: '#6ee7b7' }]), borderRadius: [4, 4, 0, 0] }
-                }]
-            });
-        };
-        const handleResize = () => { pieChart?.resize(); barChart?.resize(); };
-        watch(() => props.chartData, () => { nextTick(() => { if (!pieChart || !barChart) initCharts(); pieChart?.resize(); barChart?.resize(); updatePieChart(); updateBarChart(); }); }, { deep: true });
-        onMounted(() => { setTimeout(() => { initCharts(); window.addEventListener('resize', handleResize); }, 100); });
-        onUnmounted(() => { window.removeEventListener('resize', handleResize); pieChart?.dispose(); barChart?.dispose(); });
 
+        const handleResize = () => { pieChart?.resize(); };
+        
+        watch(() => props.chartData, () => { 
+            nextTick(() => { 
+                if (!pieChart) initCharts(); 
+                pieChart?.resize(); 
+                updatePieChart(); 
+            }); 
+        }, { deep: true });
+
+        onMounted(() => { setTimeout(() => { initCharts(); window.addEventListener('resize', handleResize); }, 100); });
+        onUnmounted(() => { window.removeEventListener('resize', handleResize); pieChart?.dispose(); });
+
+        // --- 辅助函数 ---
         const handleAddCategory = () => { if (newCatName.value) { emit('addCategory', newCatName.value); newCatName.value = ''; } };
         const getCategoryTextColor = (cat) => { const map = { '英语': 'text-blue-500', '数学': 'text-red-500', '编程': 'text-slate-700' }; return map[cat] || 'text-indigo-500'; };
         const getCategoryColor = (cat) => { const map = { '英语': 'bg-blue-500', '数学': 'bg-red-500', '编程': 'bg-slate-700', '语文': 'bg-orange-400', '科学': 'bg-emerald-500' }; return map[cat] || 'bg-indigo-500'; };
+        
         const getNodeStyle = (node) => {
             if (node.completed) return 'bg-emerald-500 text-white shadow-emerald-200';
             const t = new Date().toISOString().split('T')[0];
@@ -309,7 +340,7 @@ export default {
         };
 
         return {
-            pieChartRef, barChartRef, todayStr,
+            pieChartRef, todayStr,
             showCategoryModal, newCatName, handleAddCategory, getCategoryTextColor, getCategoryColor,
             previewImage: (src) => { const win = window.open(); win.document.write('<style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f1f5f9;}</style><img src="' + src + '" style="max-width:90%;max-height:90%;box-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1);border-radius:1rem;">'); },
             showSubjectModal, selectedSubject, subjectTasks, getNodeStyle, getNodeIcon, getTaskProgress,
