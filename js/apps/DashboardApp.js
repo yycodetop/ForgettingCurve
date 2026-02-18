@@ -1,13 +1,14 @@
 /**
  * js/apps/DashboardApp.js
- * 综合概览 - 完整版
- * 集成：概念知识库快捷入口(含快速新建)、任务分布交互、任务列表高级操作(延期/防作弊)
+ * 综合概览 - 迭代版 v2.0
+ * 新增：概念卡片快速录入模态框、挖空填空专用编辑器、实时预览
  */
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
 
 export default {
-    props: ['calendarDays', 'currentDayTasks', 'selectedDate', 'startDayOfWeek', 'categories', 'chartData', 'allTasks'], 
-    emits: ['selectDate', 'openPomodoro', 'openRate', 'editTask', 'deleteTask', 'addCategory', 'deleteCategory', 'postponeTask', 'switchApp', 'quickAddConcept'], 
+    // 新增 grades prop
+    props: ['calendarDays', 'currentDayTasks', 'selectedDate', 'startDayOfWeek', 'categories', 'chartData', 'allTasks', 'grades'], 
+    emits: ['selectDate', 'openPomodoro', 'openRate', 'editTask', 'deleteTask', 'addCategory', 'deleteCategory', 'postponeTask', 'switchApp', 'add-concept'], 
     template: `
     <div class="h-full flex flex-col gap-6 animate-fade-in pb-4 relative">
         
@@ -20,9 +21,6 @@ export default {
                 </div>
                 <div class="flex-1 w-full h-full relative min-h-0 cursor-pointer">
                     <div ref="pieChartRef" class="absolute inset-0"></div>
-                    <div class="absolute bottom-2 right-2 text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition pointer-events-none bg-white/80 px-2 py-1 rounded backdrop-blur">
-                        <i class="fas fa-hand-pointer"></i> 点击查看详情
-                    </div>
                 </div>
             </div>
 
@@ -39,7 +37,7 @@ export default {
                             <div class="font-bold text-slate-800">挖空填空</div>
                             <div class="text-xs text-slate-500 mt-1">记忆定义与关键词</div>
                         </button>
-                        <button @click.stop="$emit('quickAddConcept', 'cloze')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-amber-500 hover:text-amber-600 hover:bg-amber-50 shadow-sm border border-amber-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建">
+                        <button @click.stop="openConceptModal('cloze')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-amber-500 hover:text-amber-600 hover:bg-amber-50 shadow-sm border border-amber-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
@@ -51,7 +49,7 @@ export default {
                             <div class="font-bold text-slate-800">图片遮挡</div>
                             <div class="text-xs text-slate-500 mt-1">地理与生物结构</div>
                         </button>
-                         <button @click.stop="$emit('quickAddConcept', 'image')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-pink-500 hover:text-pink-600 hover:bg-pink-50 shadow-sm border border-pink-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建"><i class="fas fa-plus"></i></button>
+                         <button @click.stop="openConceptModal('image')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-pink-500 hover:text-pink-600 hover:bg-pink-50 shadow-sm border border-pink-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建"><i class="fas fa-plus"></i></button>
                     </div>
 
                     <div class="flex-1 relative group">
@@ -61,12 +59,12 @@ export default {
                             <div class="font-bold text-slate-800">费曼自测</div>
                             <div class="text-xs text-slate-500 mt-1">深度理解与复述</div>
                         </button>
-                         <button @click.stop="$emit('quickAddConcept', 'feynman')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-cyan-500 hover:text-cyan-600 hover:bg-cyan-50 shadow-sm border border-cyan-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建"><i class="fas fa-plus"></i></button>
+                         <button @click.stop="openConceptModal('feynman')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white text-cyan-500 hover:text-cyan-600 hover:bg-cyan-50 shadow-sm border border-cyan-100 flex items-center justify-center transition opacity-0 group-hover:opacity-100 z-10 hover:scale-110" title="快速新建"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
             </div>
 
-             <div class="w-40 flex flex-col gap-4 shrink-0">
+            <div class="w-40 flex flex-col gap-4 shrink-0">
                  <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 p-5 flex flex-col justify-center items-center">
                     <div class="text-3xl font-black text-slate-700 mb-1 tabular-nums">{{ currentDayTasks.length }}</div>
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">今日任务</div>
@@ -83,23 +81,16 @@ export default {
                  <div class="grid grid-cols-7 gap-3">
                     <div v-for="day in ['日','一','二','三','四','五','六']" class="text-center text-xs font-bold text-slate-300 py-1">{{ day }}</div>
                     <div v-for="n in startDayOfWeek" :key="'empty-'+n" class="h-24"></div>
-                    
                     <div v-for="dayObj in calendarDays" :key="dayObj.fullDate" 
                          @click="$emit('selectDate', dayObj.fullDate)"
                          class="h-28 rounded-xl border border-slate-100 p-2 transition-all cursor-pointer flex flex-col hover:shadow-md hover:border-indigo-200 group relative"
                          :class="{'ring-2 ring-indigo-500 ring-offset-2 z-10 bg-indigo-50': dayObj.fullDate === selectedDate, 'bg-white': dayObj.fullDate !== selectedDate}">
-                        
                         <span class="text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1" 
                               :class="dayObj.isToday ? 'bg-indigo-600 text-white' : 'text-slate-500'">{{ dayObj.day }}</span>
-                        
                         <div class="flex flex-wrap content-start gap-1 overflow-hidden">
                             <div v-for="t in dayObj.tasks.slice(0, 15)" :key="t.taskId + t.date" 
                                  class="w-1.5 h-1.5 shadow-sm transition-all" 
-                                 :class="[
-                                    getCategoryColor(t.category), 
-                                    t.completed ? 'opacity-30' : 'opacity-100',
-                                    t.type === 'weekend' ? 'rounded-[1px]' : 'rounded-full' 
-                                 ]"
+                                 :class="[getCategoryColor(t.category), t.completed ? 'opacity-30' : 'opacity-100', t.type === 'weekend' ? 'rounded-[1px]' : 'rounded-full']"
                                  :title="t.title"></div>
                         </div>
                     </div>
@@ -141,30 +132,16 @@ export default {
                         </div>
                         <div class="flex justify-between items-center pt-2 border-t border-slate-50">
                             <span class="text-[10px] text-slate-400 font-mono">{{ item.type === 'weekend' ? 'Weekend' : 'Day ' + item.interval }}</span>
-                            
                             <div class="flex gap-2 items-center">
                                 <button v-if="!item.completed && item.type === 'ebbinghaus' && item.date >= todayStr" 
                                         @click="handlePostpone(item)" 
-                                        class="text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded-md font-bold hover:bg-amber-100 transition flex items-center gap-1" 
-                                        title="延期">
+                                        class="text-xs bg-amber-50 text-amber-600 px-2 py-1 rounded-md font-bold hover:bg-amber-100 transition flex items-center gap-1" title="延期">
                                     <i class="fas fa-clock text-[10px]"></i> 延期
                                 </button>
-
-                                <button v-if="!item.completed && item.date === todayStr" 
-                                        @click="$emit('openRate', item)" 
-                                        class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-md font-bold hover:bg-indigo-700 transition shadow-sm shadow-indigo-200 transform active:scale-95">
-                                    打卡
-                                </button>
-                                
-                                <span v-else-if="!item.completed && item.date < todayStr" class="text-xs font-bold text-red-400 flex items-center gap-1 bg-red-50 px-2 py-1 rounded">
-                                    <i class="fas fa-exclamation-circle"></i> 已过期
-                                </span>
-                                <span v-else-if="!item.completed && item.date > todayStr" class="text-xs font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded">
-                                    <i class="fas fa-hourglass-start"></i> 待开始
-                                </span>
-                                <span v-else-if="item.completed" class="text-xs font-bold text-emerald-500 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded">
-                                    <i class="fas fa-check-circle"></i> 完成
-                                </span>
+                                <button v-if="!item.completed && item.date === todayStr" @click="$emit('openRate', item)" class="text-xs bg-indigo-600 text-white px-3 py-1 rounded-md font-bold hover:bg-indigo-700 transition shadow-sm shadow-indigo-200 transform active:scale-95">打卡</button>
+                                <span v-else-if="!item.completed && item.date < todayStr" class="text-xs font-bold text-red-400 flex items-center gap-1 bg-red-50 px-2 py-1 rounded"><i class="fas fa-exclamation-circle"></i> 已过期</span>
+                                <span v-else-if="!item.completed && item.date > todayStr" class="text-xs font-bold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded"><i class="fas fa-hourglass-start"></i> 待开始</span>
+                                <span v-else-if="item.completed" class="text-xs font-bold text-emerald-500 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded"><i class="fas fa-check-circle"></i> 完成</span>
                             </div>
                         </div>
                     </div>
@@ -173,7 +150,7 @@ export default {
         </div>
 
         <div v-if="showCategoryModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl scale-up">
+             <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl scale-up">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="font-bold text-lg text-slate-800">管理分类</h3>
                     <button @click="showCategoryModal=false" class="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400"><i class="fas fa-times"></i></button>
@@ -192,7 +169,7 @@ export default {
         </div>
 
         <div v-if="showSubjectModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[70] flex items-center justify-center p-6 animate-fade-in" @click.self="showSubjectModal=false">
-            <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[85vh] shadow-2xl scale-up flex flex-col overflow-hidden border border-slate-100">
+             <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[85vh] shadow-2xl scale-up flex flex-col overflow-hidden border border-slate-100">
                 <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-sm text-white" :class="getCategoryColor(selectedSubject)">
@@ -244,11 +221,83 @@ export default {
             </div>
         </div>
 
+        <div v-if="showConceptModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4 animate-fade-in">
+            <div class="bg-white rounded-2xl w-full max-w-lg p-8 shadow-2xl scale-up flex flex-col max-h-[90vh]">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg shadow-md" :class="conceptModalConfig.colorClass">
+                            <i :class="conceptModalConfig.icon"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-xl text-slate-800">新建{{ conceptModalConfig.title }}</h3>
+                            <p class="text-xs text-slate-400">Dashboard Quick Add</p>
+                        </div>
+                    </div>
+                    <button @click="showConceptModal=false" class="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400 transition"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="space-y-4 overflow-y-auto pr-1">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">学科</label>
+                            <select v-model="newConcept.subject" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition">
+                                <option v-for="s in categories" :value="s">{{ s }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">年级</label>
+                            <select v-model="newConcept.grade" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition">
+                                <option value="" disabled>选择年级</option>
+                                <option v-for="g in grades" :value="g">{{ g }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">标题</label>
+                        <input v-model="newConcept.title" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition" placeholder="例如: 细胞核的功能">
+                    </div>
+
+                    <div v-if="newConcept.type === 'cloze'">
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs font-bold text-slate-500">内容编辑</label>
+                            <button @click="insertCloze" class="text-[10px] bg-amber-100 text-amber-600 px-2 py-1 rounded hover:bg-amber-200 transition font-bold flex items-center gap-1">
+                                <i class="fas fa-highlighter"></i> 选中文字挖空 (Cloze)
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <textarea ref="clozeTextarea" v-model="newConcept.content" rows="6" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-amber-500 transition custom-scrollbar leading-relaxed font-mono" placeholder="输入内容，选中关键词点击上方按钮，或手动输入 {{关键词}}"></textarea>
+                        </div>
+                        
+                        <div v-if="newConcept.content" class="mt-3 bg-amber-50/50 rounded-xl p-4 border border-amber-100">
+                            <div class="text-[10px] font-bold text-amber-400 mb-2 uppercase tracking-wide">Preview 效果预览</div>
+                            <div class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap" v-html="formatClozePreview(newConcept.content)"></div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="newConcept.type === 'image'">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">图片链接</label>
+                        <input v-model="newConcept.imageUrl" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-pink-500 transition" placeholder="https://...">
+                    </div>
+                    <div v-else-if="newConcept.type === 'feynman'">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">核心概念描述</label>
+                        <textarea v-model="newConcept.content" rows="5" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-cyan-500 transition custom-scrollbar" placeholder="尝试用简单的语言解释这个概念..."></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 mt-8 pt-4 border-t border-slate-100">
+                    <button @click="showConceptModal=false" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">取消</button>
+                    <button @click="handleSaveConcept" class="flex-1 py-3 text-white font-bold rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2" :class="conceptModalConfig.btnClass">
+                        <i class="fas fa-save"></i> 保存到知识库
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
     `,
     setup(props, { emit }) {
         const todayStr = new Date().toISOString().split('T')[0];
-        
         const pieChartRef = ref(null);
         let pieChart = null;
         
@@ -257,22 +306,90 @@ export default {
         const showSubjectModal = ref(false);
         const selectedSubject = ref('');
 
+        // 新增：概念录入状态
+        const showConceptModal = ref(false);
+        const newConcept = ref({ type: 'cloze', subject: '数学', grade: '', title: '', content: '', imageUrl: '' });
+        const clozeTextarea = ref(null);
+
         // 计算选中学科的任务
         const subjectTasks = computed(() => {
             if (!selectedSubject.value || !props.allTasks) return [];
             return props.allTasks.filter(t => t.category === selectedSubject.value).sort((a,b) => b.id - a.id);
         });
 
+        const conceptModalConfig = computed(() => {
+            const configs = {
+                cloze: { title: '挖空卡片', icon: 'fas fa-highlighter', colorClass: 'bg-amber-500', btnClass: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' },
+                image: { title: '图片遮挡', icon: 'fas fa-image', colorClass: 'bg-pink-500', btnClass: 'bg-pink-500 hover:bg-pink-600 shadow-pink-200' },
+                feynman: { title: '费曼卡片', icon: 'fas fa-chalkboard-teacher', colorClass: 'bg-cyan-500', btnClass: 'bg-cyan-500 hover:bg-cyan-600 shadow-cyan-200' }
+            };
+            return configs[newConcept.value.type] || configs.cloze;
+        });
+
         // 任务延期处理
         const handlePostpone = (item) => {
             const days = prompt("🕒 任务延期\n\n请输入需要延后的天数 (例如 1):", "1");
             if (days !== null) {
-                emit('postponeTask', { 
-                    taskId: item.taskId, 
-                    stage: item.scheduleItem.stage, 
-                    days: days 
+                emit('postponeTask', { taskId: item.taskId, stage: item.scheduleItem.stage, days: days });
+            }
+        };
+
+        // --- 概念录入逻辑 ---
+        const openConceptModal = (type) => {
+            newConcept.value = {
+                type: type,
+                subject: props.categories.length > 0 ? props.categories[0] : '数学',
+                grade: props.grades.length > 0 ? props.grades[0] : '', // 默认初一
+                title: '',
+                content: '',
+                imageUrl: ''
+            };
+            showConceptModal.value = true;
+        };
+
+        // 插入挖空标记 {{ }}
+        const insertCloze = () => {
+            const textarea = clozeTextarea.value;
+            if (!textarea) return;
+            
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = newConcept.value.content;
+            
+            if (start === end) {
+                // 没有选中，插入空标记
+                const insertion = "{{}}";
+                newConcept.value.content = text.substring(0, start) + insertion + text.substring(end);
+                nextTick(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(start + 2, start + 2);
+                });
+            } else {
+                // 选中了文本，包裹
+                const selected = text.substring(start, end);
+                const insertion = `{{${selected}}}`;
+                newConcept.value.content = text.substring(0, start) + insertion + text.substring(end);
+                nextTick(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(end + 4, end + 4); // 光标移到末尾
                 });
             }
+        };
+
+        // 预览格式化
+        const formatClozePreview = (text) => {
+            if (!text) return '';
+            // 简单的 XSS 过滤，实际项目建议使用库
+            const escaped = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return escaped.replace(/\{\{(.+?)\}\}/g, '<span class="border-b-2 border-amber-400 font-bold text-amber-600 px-1 bg-amber-50 rounded mx-0.5">$1</span>');
+        };
+
+        const handleSaveConcept = () => {
+            if (!newConcept.value.title) return alert('请输入标题');
+            if (newConcept.value.type === 'cloze' && !/\{\{.+?\}\}/.test(newConcept.value.content)) return alert('挖空内容必须包含至少一个 {{关键词}}');
+            
+            emit('add-concept', { ...newConcept.value });
+            showConceptModal.value = false;
         };
 
         // --- ECharts 逻辑 ---
@@ -344,7 +461,10 @@ export default {
             showCategoryModal, newCatName, handleAddCategory, getCategoryTextColor, getCategoryColor,
             previewImage: (src) => { const win = window.open(); win.document.write('<style>body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f1f5f9;}</style><img src="' + src + '" style="max-width:90%;max-height:90%;box-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1);border-radius:1rem;">'); },
             showSubjectModal, selectedSubject, subjectTasks, getNodeStyle, getNodeIcon, getTaskProgress,
-            handlePostpone
+            handlePostpone,
+            // 概念录入导出
+            showConceptModal, newConcept, clozeTextarea, conceptModalConfig,
+            openConceptModal, insertCloze, formatClozePreview, handleSaveConcept
         };
     }
 }
