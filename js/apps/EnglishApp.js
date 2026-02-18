@@ -1,8 +1,8 @@
 /**
  * js/apps/EnglishApp.js
- * 英语工作室 (v18.4: 终极修复 - 变量提升解决 ReferenceError + 布局层级修正)
+ * 英语工作室 (v19.0: 引入艾宾浩斯遗忘曲线错词复习系统)
  */
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick, onUnmounted, onMounted } from 'vue';
 import { useTTS } from '../composables/useTTS.js';
 
 export default {
@@ -33,6 +33,10 @@ export default {
         const showMistakeBook = ref(false);
         const mistakeList = ref([]);
         const selectedMistakeDate = ref(null); 
+
+        // 艾宾浩斯遗忘曲线状态
+        const ebbinghausReviewList = ref([]);
+        const isEbbinghausReview = ref(false);
 
         // 学习/背诵状态
         const showReciteSetup = ref(false);
@@ -79,7 +83,7 @@ export default {
         const matchNextOrder = ref(1);     
         const matchResults = ref([]);    
 
-        // --- 2. 核心 Computed (提前定义，防止 ReferenceError) ---
+        // --- 2. 核心 Computed ---
         const filteredVocab = computed(() => props.vocabulary);
 
         const mistakeGroups = computed(() => {
@@ -134,7 +138,7 @@ export default {
             }
         });
 
-        // --- 4. 辅助函数 ---
+        // --- 4. 辅助函数与艾宾浩斯逻辑 ---
         const fetchPhonetic = async (word) => {
             if (!word) return '';
             try {
@@ -149,8 +153,46 @@ export default {
             return '';
         };
 
+        const getDaysDiff = (dateStr1, dateStr2) => {
+            if (!dateStr1 || !dateStr2) return -1;
+            const [y1, m1, d1] = dateStr1.split('-');
+            const [y2, m2, d2] = dateStr2.split('-');
+            const date1 = new Date(y1, m1 - 1, d1);
+            const date2 = new Date(y2, m2 - 1, d2);
+            return Math.round((date1 - date2) / (1000 * 60 * 60 * 24));
+        };
+
+        const loadMistakesData = async () => {
+            try {
+                const res = await fetch('/api/vocabulary/mistakes');
+                const mistakes = await res.json();
+                mistakeList.value = mistakes;
+                
+                const todayStr = new Date().toISOString().split('T')[0];
+                // 艾宾浩斯时间轴：第2天, 第3天, 第5天, 第8天, 第15天 -> 对应间隔天数为 [1, 2, 4, 7, 14]
+                const intervals = [1, 2, 4, 7, 14]; 
+                
+                const dueList = mistakes.filter(m => {
+                    const diff = getDaysDiff(todayStr, m.date);
+                    return intervals.includes(diff);
+                });
+                
+                // 去重处理，如果同一个单词在多个历史日期出错都触发了今日复习，仅保留一条
+                const uniqueWords = new Map();
+                dueList.forEach(m => {
+                    if (!uniqueWords.has(m.word)) uniqueWords.set(m.word, m);
+                });
+                ebbinghausReviewList.value = Array.from(uniqueWords.values());
+            } catch (e) { console.error("Failed to load mistakes", e); }
+        };
+
+        onMounted(() => {
+            loadMistakesData();
+        });
+
         const logMistake = async (item) => {
-            if (!item) return;
+            // 核心逻辑：如果是遗忘曲线复习阶段，不二次记录错题，避免死循环打击自信
+            if (!item || isEbbinghausReview.value) return; 
             try {
                 await fetch('/api/vocabulary/mistakes', {
                     method: 'POST',
@@ -161,6 +203,7 @@ export default {
                         bookId: item.bookId
                     })
                 });
+                loadMistakesData(); // 静默更新错题与遗忘曲线列表
             } catch (e) { console.error("Failed to log mistake", e); }
         };
 
@@ -172,12 +215,7 @@ export default {
 
         // --- 5. 业务逻辑 ---
         
-        // 单词本操作
-        const openCreateModal = () => { 
-            isEditingBook.value = false; 
-            newBookForm.value = { id: '', name: '', type: 'word', icon: 'fas fa-book' }; 
-            showCreateModal.value = true; 
-        };
+        const openCreateModal = () => { isEditingBook.value = false; newBookForm.value = { id: '', name: '', type: 'word', icon: 'fas fa-book' }; showCreateModal.value = true; };
         const openEditBookModal = () => { if (!props.currentBook) return; isEditingBook.value = true; newBookForm.value = { ...props.currentBook }; showCreateModal.value = true; };
         
         const handleSaveBook = () => {
@@ -191,9 +229,7 @@ export default {
             if (!localNewWord.value.word || !localNewWord.value.meaning) return;
             isFetching.value = true;
             let phonetic = '';
-            if (props.currentBook?.type === 'word') {
-                phonetic = await fetchPhonetic(localNewWord.value.word);
-            }
+            if (props.currentBook?.type === 'word') phonetic = await fetchPhonetic(localNewWord.value.word);
             emit('addWord', { ...localNewWord.value, phonetic });
             localNewWord.value.word = ''; 
             localNewWord.value.meaning = '';
@@ -238,21 +274,28 @@ export default {
             alert(`音标魔法施放完毕！✨\n共更新了 ${updateCount} 个单词的音标。`);
         };
 
-        // 错词本操作
         const openMistakeBook = async () => {
-            try {
-                const res = await fetch('/api/vocabulary/mistakes');
-                mistakeList.value = await res.json();
-                if (sortedMistakeDates.value.length > 0) {
-                    selectedMistakeDate.value = sortedMistakeDates.value[0];
-                }
-                showMistakeBook.value = true;
-            } catch (e) {
-                alert("获取错词本失败");
-            }
+            await loadMistakesData();
+            if (sortedMistakeDates.value.length > 0) selectedMistakeDate.value = sortedMistakeDates.value[0];
+            showMistakeBook.value = true;
         };
 
-        // 学习启动
+        const startEbbinghausReview = () => {
+            if (ebbinghausReviewList.value.length === 0) {
+                return alert("太棒了！今天没有需要遗忘曲线复习的错词！🎉");
+            }
+            // 核心逻辑：进入艾宾浩斯复习流，强制使用听写单词模式
+            reciteConfig.value.studyMode = 'dictate';
+            reciteConfig.value.order = 'random';
+            reciteConfig.value.mode = 'unlimited';
+            isEbbinghausReview.value = true;
+            
+            isWaitingForReciteData.value = false; // 绕过正常抓取逻辑
+            showReciteSetup.value = false;
+            
+            initRecitationSession(ebbinghausReviewList.value);
+        };
+
         const openReciteSetup = (mode) => {
             reciteConfig.value.studyMode = mode;
             if (props.currentBook) reciteConfig.value.selectedBookIds = [props.currentBook.id];
@@ -271,7 +314,6 @@ export default {
             emit('request-recitation', reciteConfig.value.selectedBookIds);
         };
 
-        // 学习运行逻辑
         const initRecitationSession = (data) => {
             let queue = [...data];
             if (reciteConfig.value.order === 'random') queue.sort(() => Math.random() - 0.5);
@@ -461,10 +503,13 @@ export default {
             clearInterval(reciteTimer.value); 
             memorizeSessionId.value++; 
             window.removeEventListener('keydown', handleKeydown);
+            if (isEbbinghausReview.value) {
+                isEbbinghausReview.value = false;
+                loadMistakesData(); // 结束复习后静默刷新底层数据
+            }
         };
         const focusInput = () => nextTick(() => inputRef.value?.focus());
 
-        // 连线游戏逻辑
         const genCardId = (col, item) => `${col}-${item.id}`;
         const initMatchGame = (data) => {
             let allData = [...data];
@@ -567,6 +612,9 @@ export default {
             // 错词本相关
             showMistakeBook, mistakeList, mistakeGroups, selectedMistakeDate, sortedMistakeDates, openMistakeBook,
             
+            // 艾宾浩斯新逻辑导出
+            ebbinghausReviewList, isEbbinghausReview, startEbbinghausReview,
+
             // 自动音标
             autoFillPhonetic: fetchPhonetic,
             isFetchingPhonetic: isFetching,
@@ -626,9 +674,16 @@ export default {
                     <button @click="openReciteSetup('recite')" class="group bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-indigo-500 text-white flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30 shrink-0"><i class="fas fa-pencil-alt"></i></div><div><h4 class="font-bold text-lg leading-tight">默写单词</h4><p class="text-xs text-indigo-200/60 mt-1">看中文 · 默写英文</p></div><i class="fas fa-chevron-right ml-auto text-white/20 group-hover:text-white/60 transition"></i></button>
                     <button @click="openReciteSetup('dictate')" class="group bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-purple-500 text-white flex items-center justify-center text-xl shadow-lg shadow-purple-500/30 shrink-0"><i class="fas fa-headphones"></i></div><div><h4 class="font-bold text-lg leading-tight">听写单词</h4><p class="text-xs text-purple-200/60 mt-1">听发音 · 拼写英文</p></div><i class="fas fa-chevron-right ml-auto text-white/20 group-hover:text-white/60 transition"></i></button>
                 </div>
-                <button @click="openMistakeBook" class="mt-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl p-3 font-bold shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2 transition transform active:scale-95">
-                    <i class="fas fa-fire"></i> 错词本 (Review Mistakes)
-                </button>
+                
+                <div class="mt-4 flex gap-3">
+                    <button @click="openMistakeBook" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-xl p-3 font-bold shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2 transition transform active:scale-95">
+                        <i class="fas fa-fire"></i> 错词本
+                    </button>
+                    <button @click="startEbbinghausReview" class="flex-[2] bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-3 font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition transform active:scale-95 relative overflow-hidden">
+                        <i class="fas fa-chart-line"></i> 遗忘曲线听写 
+                        <span v-if="ebbinghausReviewList.length > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs ml-1">{{ ebbinghausReviewList.length }}</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -706,7 +761,7 @@ export default {
             </div>
         </div>
 
-        <div v-if="isReciting" class="fixed inset-0 bg-white z-[100] flex flex-col animate-fade-in" @click="focusInput"><div class="h-2 bg-slate-100 w-full"><div class="h-full transition-all duration-300 ease-out" :class="{'bg-indigo-500':reciteConfig.studyMode==='recite', 'bg-purple-500':reciteConfig.studyMode==='dictate', 'bg-pink-500':reciteConfig.studyMode==='memorize'}" :style="{ width: reciteProgress + '%' }"></div></div><div class="p-6 flex justify-between items-center"><div class="text-slate-400 font-bold text-sm"><span :class="{'text-indigo-600':reciteConfig.studyMode==='recite', 'text-purple-600':reciteConfig.studyMode==='dictate', 'text-pink-600':reciteConfig.studyMode==='memorize'}">{{ reciteIndex + 1 }}</span> / {{ reciteQueue.length }}</div><button @click="exitRecitation" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition"><i class="fas fa-times"></i></button></div><div class="flex-1 flex flex-col items-center justify-center p-8 max-w-5xl mx-auto w-full text-center"><div v-if="reciteConfig.studyMode === 'memorize' && memorizeStage === 0" class="absolute inset-0 z-50 flex items-center justify-center bg-white flex-col"><div :key="flashCount" class="flex flex-col items-center animate-ping-once mb-12"><div class="text-6xl md:text-8xl font-black text-pink-600 mb-4">{{ currentReciteWord?.word }}</div><div class="text-2xl md:text-3xl text-slate-400 font-mono mb-6 font-medium">/ {{ currentReciteWord?.phonetic || '...' }} /</div><div class="text-3xl md:text-4xl text-slate-800 font-bold">{{ currentReciteWord?.meaning }}</div></div><div class="text-pink-400 font-bold text-xl animate-pulse flex items-center gap-2"><i class="fas fa-volume-up"></i> Follow Reading {{ flashCount }}/5</div></div><div v-if="reciteConfig.studyMode === 'dictate'" class="mb-10 scale-up"><div class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-500 rounded-full text-sm font-bold"><i class="fas fa-headphones"></i> Listen & Type</div></div><div v-if="reciteConfig.studyMode === 'memorize' && memorizeStage > 0" class="mb-6 scale-up"><div class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors" :class="{'bg-blue-50 text-blue-500': memorizeStage===1, 'bg-purple-50 text-purple-500': memorizeStage===2, 'bg-orange-50 text-orange-500': memorizeStage===3}"><span v-if="memorizeStage===1">Stage 1: 临摹 (Copy)</span><span v-else-if="memorizeStage===2">Stage 2: 听拼 (Spell)</span><span v-else-if="memorizeStage===3">Stage 3: 默写 (Recall)</span></div></div><div class="mb-12 scale-up min-h-[100px] flex flex-col justify-center"><div v-if="showHintMeaning"><div class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">DEFINITION</div><h2 class="text-4xl md:text-5xl font-black text-slate-800 leading-tight mb-4 transition-all">{{ currentReciteWord?.meaning }}</h2></div><div v-if="showHintWord && reciteConfig.studyMode === 'memorize' && memorizeStage === 1" class="text-3xl font-bold text-pink-300 select-none tracking-widest animate-pulse">{{ currentReciteWord?.word }}</div></div><div class="relative w-full flex justify-center mb-8"><input ref="inputRef" v-model="reciteInput" @input="handleReciteInput" @keyup.enter="checkReciteAnswer" type="text" autocomplete="off" spellcheck="false" :maxlength="currentReciteWord?.word.length" class="absolute inset-0 opacity-0 cursor-default caret-transparent z-0"><div class="flex flex-wrap justify-center gap-3 z-10 pointer-events-none"><div v-for="(slot, index) in wordSlots" :key="index" class="flex items-end justify-center transition-all duration-200" :class="[slot.isSpace ? 'w-6 border-b-0' : 'w-10 md:w-14 border-b-4 h-16 md:h-20', slot.isSpace ? '' : (reciteStatus === 'wrong' ? 'border-red-400 text-red-500' : (reciteStatus === 'correct' ? 'border-emerald-400 text-emerald-500' : (slot.isActive ? (reciteConfig.studyMode==='memorize' ? (memorizeStage===1?'border-blue-500':(memorizeStage===2?'border-purple-500':'border-orange-500')) : (reciteConfig.studyMode==='dictate'?'border-purple-500':'border-indigo-500')) : 'border-slate-200 text-slate-800')))]"><span class="text-4xl md:text-5xl font-bold font-mono pb-2" :class="{'animate-bounce-slow': slot.isActive && reciteStatus === 'neutral'}">{{ slot.val }}</span></div></div></div><div class="h-10 flex justify-center items-center gap-4 text-sm font-bold"><span v-if="reciteStatus === 'wrong'" class="text-red-500 animate-bounce-slow flex items-center gap-2"><i class="fas fa-times-circle"></i> Try Again!</span><span v-else-if="reciteStatus === 'correct'" class="text-emerald-500 flex items-center gap-2"><i class="fas fa-check-circle"></i> Correct!</span><div v-else class="text-slate-300 flex gap-4 text-xs font-normal"><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">←</kbd> Prev</span><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">Enter</kbd> Check</span><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">→</kbd> Next</span></div></div><div v-if="showAnswer" class="mt-8 p-6 rounded-xl animate-fade-in w-full max-w-md mx-auto border" :class="{'bg-indigo-50 border-indigo-100':reciteConfig.studyMode==='recite', 'bg-purple-50 border-purple-100':reciteConfig.studyMode==='dictate', 'bg-pink-50 border-pink-100':reciteConfig.studyMode==='memorize'}"><p class="text-xs font-bold uppercase mb-1" :class="{'text-indigo-400':reciteConfig.studyMode==='recite', 'text-purple-400':reciteConfig.studyMode==='dictate', 'text-pink-400':reciteConfig.studyMode==='memorize'}">Answer</p><p class="text-3xl font-black tracking-wide select-all" :class="{'text-indigo-600':reciteConfig.studyMode==='recite', 'text-purple-600':reciteConfig.studyMode==='dictate', 'text-pink-600':reciteConfig.studyMode==='memorize'}">{{ currentReciteWord?.word }}</p><p class="text-xs mt-2" :class="{'text-indigo-400':reciteConfig.studyMode==='recite', 'text-purple-400':reciteConfig.studyMode==='dictate', 'text-pink-400':reciteConfig.studyMode==='memorize'}">Type it correctly to continue</p></div></div><button @click.stop="prevWord" class="fixed left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition" :class="{'opacity-50 cursor-not-allowed': reciteIndex === 0}"><i class="fas fa-chevron-left"></i></button><button @click.stop="nextWord" class="fixed right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-chevron-right"></i></button></div>
+        <div v-if="isReciting" class="fixed inset-0 bg-white z-[100] flex flex-col animate-fade-in" @click="focusInput"><div class="h-2 bg-slate-100 w-full"><div class="h-full transition-all duration-300 ease-out" :class="{'bg-indigo-500':reciteConfig.studyMode==='recite', 'bg-purple-500':reciteConfig.studyMode==='dictate', 'bg-pink-500':reciteConfig.studyMode==='memorize'}" :style="{ width: reciteProgress + '%' }"></div></div><div class="p-6 flex justify-between items-center"><div class="text-slate-400 font-bold text-sm"><span :class="{'text-indigo-600':reciteConfig.studyMode==='recite', 'text-purple-600':reciteConfig.studyMode==='dictate', 'text-pink-600':reciteConfig.studyMode==='memorize'}">{{ reciteIndex + 1 }}</span> / {{ reciteQueue.length }}</div><button @click="exitRecitation" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition"><i class="fas fa-times"></i></button></div><div class="flex-1 flex flex-col items-center justify-center p-8 max-w-5xl mx-auto w-full text-center"><div v-if="reciteConfig.studyMode === 'memorize' && memorizeStage === 0" class="absolute inset-0 z-50 flex items-center justify-center bg-white flex-col"><div :key="flashCount" class="flex flex-col items-center animate-ping-once mb-12"><div class="text-6xl md:text-8xl font-black text-pink-600 mb-4">{{ currentReciteWord?.word }}</div><div class="text-2xl md:text-3xl text-slate-400 font-mono mb-6 font-medium">/ {{ currentReciteWord?.phonetic || '...' }} /</div><div class="text-3xl md:text-4xl text-slate-800 font-bold">{{ currentReciteWord?.meaning }}</div></div><div class="text-pink-400 font-bold text-xl animate-pulse flex items-center gap-2"><i class="fas fa-volume-up"></i> Follow Reading {{ flashCount }}/5</div></div><div v-if="reciteConfig.studyMode === 'dictate'" class="mb-10 scale-up"><div class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-500 rounded-full text-sm font-bold"><i class="fas fa-headphones"></i> Listen & Type (听发音拼写)</div></div><div v-if="reciteConfig.studyMode === 'memorize' && memorizeStage > 0" class="mb-6 scale-up"><div class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors" :class="{'bg-blue-50 text-blue-500': memorizeStage===1, 'bg-purple-50 text-purple-500': memorizeStage===2, 'bg-orange-50 text-orange-500': memorizeStage===3}"><span v-if="memorizeStage===1">Stage 1: 临摹 (Copy)</span><span v-else-if="memorizeStage===2">Stage 2: 听拼 (Spell)</span><span v-else-if="memorizeStage===3">Stage 3: 默写 (Recall)</span></div></div><div class="mb-12 scale-up min-h-[100px] flex flex-col justify-center"><div v-if="showHintMeaning"><div class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">DEFINITION</div><h2 class="text-4xl md:text-5xl font-black text-slate-800 leading-tight mb-4 transition-all">{{ currentReciteWord?.meaning }}</h2></div><div v-if="showHintWord && reciteConfig.studyMode === 'memorize' && memorizeStage === 1" class="text-3xl font-bold text-pink-300 select-none tracking-widest animate-pulse">{{ currentReciteWord?.word }}</div></div><div class="relative w-full flex justify-center mb-8"><input ref="inputRef" v-model="reciteInput" @input="handleReciteInput" @keyup.enter="checkReciteAnswer" type="text" autocomplete="off" spellcheck="false" :maxlength="currentReciteWord?.word.length" class="absolute inset-0 opacity-0 cursor-default caret-transparent z-0"><div class="flex flex-wrap justify-center gap-3 z-10 pointer-events-none"><div v-for="(slot, index) in wordSlots" :key="index" class="flex items-end justify-center transition-all duration-200" :class="[slot.isSpace ? 'w-6 border-b-0' : 'w-10 md:w-14 border-b-4 h-16 md:h-20', slot.isSpace ? '' : (reciteStatus === 'wrong' ? 'border-red-400 text-red-500' : (reciteStatus === 'correct' ? 'border-emerald-400 text-emerald-500' : (slot.isActive ? (reciteConfig.studyMode==='memorize' ? (memorizeStage===1?'border-blue-500':(memorizeStage===2?'border-purple-500':'border-orange-500')) : (reciteConfig.studyMode==='dictate'?'border-purple-500':'border-indigo-500')) : 'border-slate-200 text-slate-800')))]"><span class="text-4xl md:text-5xl font-bold font-mono pb-2" :class="{'animate-bounce-slow': slot.isActive && reciteStatus === 'neutral'}">{{ slot.val }}</span></div></div></div><div class="h-10 flex justify-center items-center gap-4 text-sm font-bold"><span v-if="reciteStatus === 'wrong'" class="text-red-500 animate-bounce-slow flex items-center gap-2"><i class="fas fa-times-circle"></i> Try Again!</span><span v-else-if="reciteStatus === 'correct'" class="text-emerald-500 flex items-center gap-2"><i class="fas fa-check-circle"></i> Correct!</span><div v-else class="text-slate-300 flex gap-4 text-xs font-normal"><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">←</kbd> Prev</span><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">Enter</kbd> Check</span><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">→</kbd> Next</span></div></div><div v-if="showAnswer" class="mt-8 p-6 rounded-xl animate-fade-in w-full max-w-md mx-auto border" :class="{'bg-indigo-50 border-indigo-100':reciteConfig.studyMode==='recite', 'bg-purple-50 border-purple-100':reciteConfig.studyMode==='dictate', 'bg-pink-50 border-pink-100':reciteConfig.studyMode==='memorize'}"><p class="text-xs font-bold uppercase mb-1" :class="{'text-indigo-400':reciteConfig.studyMode==='recite', 'text-purple-400':reciteConfig.studyMode==='dictate', 'text-pink-400':reciteConfig.studyMode==='memorize'}">Answer</p><p class="text-3xl font-black tracking-wide select-all" :class="{'text-indigo-600':reciteConfig.studyMode==='recite', 'text-purple-600':reciteConfig.studyMode==='dictate', 'text-pink-600':reciteConfig.studyMode==='memorize'}">{{ currentReciteWord?.word }}</p><p class="text-xs mt-2" :class="{'text-indigo-400':reciteConfig.studyMode==='recite', 'text-purple-400':reciteConfig.studyMode==='dictate', 'text-pink-400':reciteConfig.studyMode==='memorize'}">Type it correctly to continue</p></div></div><button @click.stop="prevWord" class="fixed left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition" :class="{'opacity-50 cursor-not-allowed': reciteIndex === 0}"><i class="fas fa-chevron-left"></i></button><button @click.stop="nextWord" class="fixed right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-chevron-right"></i></button></div>
 
     <div v-if="isMatchingGame" class="fixed inset-0 bg-white z-[100] flex flex-col animate-fade-in"><template v-if="matchGameMode === 'playing'"><div class="p-6 flex justify-between items-center bg-slate-50 border-b border-slate-100"><div class="text-slate-500 font-bold flex gap-4 items-center"><span class="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg text-sm border border-emerald-100 shadow-sm"><i class="fas fa-layer-group mr-2"></i>本轮进度: {{ Math.min((matchCurrentRound + 1) * 20, matchTotalQueue.length) }} / {{ matchTotalQueue.length }}</span></div><button @click="submitMatchRound" class="px-6 py-2 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200">{{ (matchCurrentRound + 1) * 20 >= matchTotalQueue.length ? '完成测试' : '下一组' }} <i class="fas fa-arrow-right ml-1"></i></button></div><div class="flex-1 flex relative overflow-hidden bg-slate-50/30 p-6 items-center justify-center"><div class="grid grid-cols-4 gap-6 w-full max-w-6xl" :class="matchCol3.length === 0 ? 'max-w-2xl !grid-cols-2' : ''"><div class="flex flex-col gap-3"><div v-for="item in matchCol1" :key="'c1-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center text-sm font-medium select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-600 hover:border-emerald-100 hover:shadow-md')]">{{ item.meaning }}<div v-if="getPairOrder(item)" class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div></div></div><div class="flex flex-col gap-3"><div v-for="item in matchCol2" :key="'c2-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center font-bold text-lg select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-700 hover:border-emerald-100 hover:shadow-md')]">{{ item.word }}<div v-if="getPairOrder(item)" class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div></div></div><div v-if="matchCol3.length > 0" class="flex flex-col gap-3 pl-4 border-l border-slate-200/50"><div v-for="item in matchCol3" :key="'c3-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center font-bold text-lg select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-700 hover:border-emerald-100 hover:shadow-md')]">{{ item.word }}<div v-if="getPairOrder(item)" class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div></div></div><div v-if="matchCol4.length > 0" class="flex flex-col gap-3"><div v-for="item in matchCol4" :key="'c4-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center text-sm font-medium select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-600 hover:border-emerald-100 hover:shadow-md')]">{{ item.meaning }}<div v-if="getPairOrder(item)" class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div></div></div></div></div></template><template v-else><div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center"><h3 class="text-xl font-bold text-slate-800">测试结果汇总</h3><div class="flex gap-4 text-sm font-bold"><span class="text-emerald-500">正确: {{ matchCorrectList.length }}</span><span class="text-red-500">错误: {{ matchWrongList.length }}</span></div><button @click="exitMatchGame" class="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700 transition">结束测试</button></div><div class="flex-1 flex overflow-hidden"><div class="flex-1 border-r border-slate-100 bg-emerald-50/10 p-6 overflow-y-auto"><h4 class="text-sm font-bold text-emerald-600 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-check-circle"></i> Correct Matches</h4><div class="space-y-2"><div v-for="res in matchCorrectList" :key="res.word" class="flex justify-between items-center p-3 bg-white border border-emerald-100 rounded-lg shadow-sm"><span class="font-bold text-slate-700">{{ res.word }}</span><span class="text-sm text-slate-500">{{ res.correctMeaning }}</span></div><div v-if="matchCorrectList.length === 0" class="text-center text-slate-400 py-10 italic">没有正确配对... 加油！</div></div></div><div class="flex-1 bg-red-50/10 p-6 overflow-y-auto"><h4 class="text-sm font-bold text-red-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-times-circle"></i> Incorrect Matches</h4><div class="space-y-2"><div v-for="res in matchWrongList" :key="res.word" class="p-3 bg-white border border-red-100 rounded-lg shadow-sm"><div class="flex justify-between items-center mb-1"><span class="font-bold text-red-600 line-through">{{ res.word }}</span><span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Correct: {{ res.correctMeaning }}</span></div><div class="text-xs text-slate-400">你选择了: {{ res.userMeaning }}</div></div><div v-if="matchWrongList.length === 0" class="text-center text-emerald-400 py-10 font-bold text-xl">全对！太棒了！🎉</div></div></div></div></template></div>
     </div>

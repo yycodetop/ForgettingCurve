@@ -39,13 +39,18 @@ const app = createApp({
         });
 
         const handleAddWord = async (wordObj) => {
-            vocabModule.newWord.value = wordObj; // [修复] 变量名修正
+            vocabModule.newWord.value = wordObj; 
             await vocabModule.addManualWord();
         };
 
         const handleRecitationRequest = async (bookIds) => {
             const data = await vocabModule.fetchAggregateVocab(bookIds);
             recitationData.value = data;
+        };
+
+        // 处理来自 Dashboard 的延期请求
+        const handlePostponeTask = ({ taskId, stage, days }) => {
+            taskModule.postponeTask(taskId, stage, days);
         };
 
         return {
@@ -56,7 +61,8 @@ const app = createApp({
             ...vocabModule,
             ...pomodoroModule,
             handleAddWord,
-            handleRecitationRequest
+            handleRecitationRequest,
+            handlePostponeTask // 导出给模板使用
         };
     }
 });
