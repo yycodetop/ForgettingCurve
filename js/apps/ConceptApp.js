@@ -1,16 +1,16 @@
 /**
  * js/apps/ConceptApp.js
  * 概念学习通用应用框架
- * 迭代 v2.6: 
- * 1. UI 调整：将 Excel 模板下载与导入入口移至主界面顶部操作栏，与“新建卡片”平级
- * 2. 仅在“挖空填空 (cloze)”模式下显示导入/导出按钮
- * 3. 保持复习模式、沉浸背诵、答题卡等核心功能
+ * 迭代 v3.0: 
+ * 1. 状态持久化：切换题目后保留"红/橙"判题颜色
+ * 2. 局部修改：仅被修改的错题变回蓝色，其余保持原样
+ * 3. 酷炫统计：自定义结果面板，按"空"维度统计正确率
+ * 4. 流程优化：支持反复提交判题
  */
 import { ref, computed, nextTick, onUnmounted, watch } from 'vue';
 
 export default {
     props: ['mode', 'concepts', 'subjects', 'grades', 'initialAction'], 
-    // 确保父组件监听 'refresh' 事件以重新加载数据
     emits: ['add-concept', 'update-concept', 'delete-concept', 'back-home', 'import-excel', 'refresh'],
     template: `
     <div class="h-full flex gap-6 animate-fade-in relative">
@@ -21,6 +21,7 @@ export default {
                 </div>
                 <h2 class="font-bold text-lg text-slate-800">{{ modeConfig.title }}</h2>
             </div>
+            
             <div class="px-2 mb-4 space-y-3">
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1 mb-1 block">年级筛选</label>
@@ -34,6 +35,7 @@ export default {
                 </div>
             </div>
             <div class="h-px bg-slate-100 mx-2 mb-2"></div>
+            
             <div class="flex-1 overflow-y-auto custom-scrollbar space-y-1">
                 <button @click="currentSubject = 'all'" class="w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition flex justify-between items-center" :class="currentSubject === 'all' ? 'bg-slate-800 text-white shadow-lg shadow-slate-300' : 'text-slate-500 hover:bg-slate-50'"><span>📚 全部学科</span><span class="bg-white/20 px-2 py-0.5 rounded text-xs">{{ filteredList('all').length }}</span></button>
                 <div class="h-px bg-slate-100 my-2 mx-2"></div>
@@ -82,8 +84,11 @@ export default {
                         
                         <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br opacity-10 rounded-bl-3xl -mr-2 -mt-2 pointer-events-none" :class="modeConfig.gradientClass"></div>
 
-                        <div v-if="item.lastReview" class="absolute top-3 right-3 bg-emerald-100 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                            <i class="fas fa-check"></i> 已完成
+                        <div v-if="item.status === 'correct'" class="absolute top-3 right-3 bg-emerald-100 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                            <i class="fas fa-check"></i> 全对
+                        </div>
+                        <div v-else-if="item.status === 'error'" class="absolute top-3 right-3 bg-red-50 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-100 flex items-center gap-1">
+                            <i class="fas fa-exclamation-circle"></i> 错题
                         </div>
 
                         <div class="flex justify-between items-start mb-3">
@@ -105,7 +110,6 @@ export default {
                             <div v-else-if="mode === 'image'" class="w-full h-24 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 overflow-hidden relative">
                                 <img v-if="item.imageUrl" :src="item.imageUrl" class="w-full h-full object-cover">
                                 <i v-else class="fas fa-image text-2xl"></i>
-                                <div class="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><span class="bg-black/60 text-white text-xs px-2 py-1 rounded">查看遮挡</span></div>
                             </div>
                             
                             <p v-else-if="mode === 'feynman'" class="text-sm text-slate-500 leading-relaxed line-clamp-3 italic">"{{ item.content }}"</p>
@@ -154,23 +158,6 @@ export default {
                             <span class="text-[10px] text-amber-500 bg-amber-50 px-2 rounded">使用 <code class="font-mono font-bold">{{ }}</code> 包裹关键词</span>
                         </div>
                         <textarea v-model="newItem.content" rows="6" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 custom-scrollbar whitespace-pre-wrap" placeholder="例如: \n第一行内容\n第二行{{关键词}}内容"></textarea>
-                        
-                        <div v-if="newItem.content" class="mt-2 p-3 bg-slate-100 rounded-xl border border-slate-200">
-                            <div class="text-[10px] font-bold text-slate-400 mb-1 uppercase">效果预览</div>
-                            <p class="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed" v-html="formatClozePreview(newItem.content)"></p>
-                        </div>
-                    </div>
-                    
-                    <div v-else-if="mode === 'image'">
-                        <label class="block text-xs font-bold text-slate-500 mb-1">上传图片</label>
-                        <div class="border-2 border-dashed border-slate-200 rounded-xl h-32 flex flex-col items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition cursor-pointer bg-slate-50">
-                            <i class="fas fa-cloud-upload-alt text-2xl mb-2"></i>
-                            <span class="text-xs">点击上传图片</span>
-                        </div>
-                    </div>
-                    <div v-else-if="mode === 'feynman'">
-                        <label class="block text-xs font-bold text-slate-500 mb-1">核心概念</label>
-                        <textarea v-model="newItem.content" rows="4" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 custom-scrollbar" placeholder="解释概念..."></textarea>
                     </div>
                 </div>
 
@@ -188,7 +175,6 @@ export default {
                     <div>
                         <h2 class="text-xl font-bold text-white">{{ currentReciteItem.title }}</h2>
                         <span class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">{{ currentReciteItem.subject }} · {{ currentReciteItem.grade }}</span>
-                        <span v-if="currentReciteItem.lastReview" class="ml-2 text-xs text-emerald-400 font-bold"><i class="fas fa-check-circle"></i> 已掌握</span>
                     </div>
                 </div>
                 
@@ -200,13 +186,10 @@ export default {
                         <i class="fas" :class="isReviewMode ? 'fa-book-open' : 'fa-toggle-off'"></i>
                         {{ isReviewMode ? '复习模式：开启' : '复习模式' }}
                     </button>
-                    <div class="text-slate-400 text-sm font-bold opacity-60 hidden md:block">
-                        <i class="fas fa-eye mr-2"></i> 沉浸学习模式
-                    </div>
                 </div>
             </div>
 
-            <div class="flex flex-1 overflow-hidden">
+            <div class="flex flex-1 overflow-hidden relative">
                 <div class="w-72 border-r border-slate-800 bg-slate-900/50 flex flex-col overflow-hidden">
                     <div class="p-4 border-b border-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider">
                         知识清单 ({{ currentReciteList.length }})
@@ -218,16 +201,14 @@ export default {
                              :class="currentReciteItem.id === item.id ? 'bg-indigo-600/20 border border-indigo-500/50' : 'hover:bg-slate-800 border border-transparent'"
                         >
                             <div class="shrink-0">
-                                <i v-if="item.lastReview" class="fas fa-check-circle text-emerald-500"></i>
+                                <i v-if="item.status === 'correct'" class="fas fa-check-circle text-emerald-500"></i>
+                                <i v-else-if="item.status === 'error'" class="fas fa-exclamation-circle text-red-500"></i>
                                 <div v-else class="w-4 h-4 rounded-full border-2 border-slate-600 group-hover:border-slate-500"></div>
                             </div>
                             
                             <div class="flex-1 min-w-0">
-                                <div class="text-sm font-bold truncate" 
-                                     :class="[
-                                        currentReciteItem.id === item.id ? 'text-indigo-400' : 'text-slate-300',
-                                        item.lastReview ? 'opacity-60 font-normal' : ''
-                                     ]">
+                                <div class="text-sm font-bold truncate transition-colors" 
+                                     :class="getListTitleClass(item)">
                                     {{ item.title }}
                                 </div>
                             </div>
@@ -237,12 +218,27 @@ export default {
                     </div>
                 </div>
 
-                <div class="flex-1 flex items-center justify-center p-8 overflow-y-auto bg-slate-900">
+                <div class="flex-1 flex items-center justify-center p-8 overflow-y-auto bg-slate-900 relative">
+                    
+                    <div v-if="isGrading" class="absolute inset-0 z-50 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in">
+                        <div class="relative w-40 h-40 mb-8">
+                            <div class="absolute inset-0 rounded-full border-2 border-slate-700 animate-[spin_4s_linear_infinite]"></div>
+                            <div class="absolute inset-2 rounded-full border border-slate-600/50"></div>
+                            <div class="absolute inset-0 m-auto w-24 h-24 bg-indigo-500/20 rounded-full animate-ping"></div>
+                            <div class="absolute inset-0 rounded-full border-t-4 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.6)] animate-[spin_1s_linear_infinite]"></div>
+                            <div class="absolute inset-0 flex items-center justify-center text-5xl text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]">
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                        </div>
+                        <h3 class="text-cyan-400 text-xl font-mono font-bold tracking-widest animate-pulse mb-2">SYSTEM ANALYZING...</h3>
+                        <p class="text-slate-500 text-xs font-bold uppercase tracking-wide">Syncing Answers • Verifying Knowledge</p>
+                    </div>
+
                     <div v-if="mode === 'cloze'" class="max-w-4xl w-full bg-white rounded-3xl shadow-2xl p-12 min-h-[400px] flex flex-col border border-slate-100 relative">
                         <div v-if="!isReviewMode" class="absolute -top-6 left-8 bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg">
-                            <i class="fas fa-highlighter mr-1"></i> 点击下划线填空
+                            <i class="fas fa-highlighter mr-1"></i> 点击下划线填空 · 填写蓝色 · 正确橙色 · 错误红色
                         </div>
-                        <div v-else class="absolute -top-6 left-8 bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg">
+                        <div v-if="isReviewMode" class="absolute -top-6 left-8 bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg">
                             <i class="fas fa-book-reader mr-1"></i> 正在复习 · 显示全部内容
                         </div>
 
@@ -255,7 +251,7 @@ export default {
                                       class="inline-block min-w-[60px] px-2 mx-1 transition-all select-none text-center relative group rounded"
                                       :class="[
                                         isReviewMode ? 'text-indigo-600 font-bold border-b-2 border-indigo-100 cursor-default' : 
-                                        'border-b-4 cursor-pointer hover:bg-indigo-50 ' + getClozeClass(segment)
+                                        'border-b-4 cursor-pointer hover:bg-indigo-50 ' + getClozeClass(segment, idx)
                                       ]"
                                 >
                                     {{ isReviewMode ? segment.answer : (segment.userVal || '点击作答') }}
@@ -267,22 +263,69 @@ export default {
                             </template>
                         </div>
                     </div>
+                </div>
 
-                    <div v-else class="flex-1 flex items-center justify-center text-slate-500">
-                        <p>该模式的背诵功能开发中...</p>
+                <div v-if="!isReviewMode && mode === 'cloze'" class="absolute bottom-8 left-80 z-40 animate-slide-up">
+                    <button @click="submitCheck" class="group relative px-6 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl shadow-xl shadow-indigo-900/40 transition-all active:scale-95 flex items-center gap-3 overflow-hidden">
+                        <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                        <i class="fas fa-tasks text-xl"></i>
+                        <div class="text-left">
+                            <div class="text-[10px] uppercase font-bold text-indigo-200 tracking-wider">Finish All</div>
+                            <div class="font-bold text-lg leading-none">提交所有判题</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="resultModal.show" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in" @click.self="resultModal.show = false">
+            <div class="bg-slate-800 rounded-3xl w-full max-w-sm shadow-2xl scale-up border border-slate-700 text-white relative overflow-hidden">
+                <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                <div class="p-8 text-center relative z-10">
+                    <div class="w-32 h-32 mx-auto mb-6 relative flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90">
+                            <circle cx="64" cy="64" r="56" stroke="currentColor" stroke-width="8" fill="transparent" class="text-slate-700" />
+                            <circle cx="64" cy="64" r="56" stroke="currentColor" stroke-width="8" fill="transparent" 
+                                    :stroke-dasharray="351.86" 
+                                    :stroke-dashoffset="351.86 - (351.86 * resultModal.score) / 100" 
+                                    class="text-emerald-500 transition-all duration-1000 ease-out" />
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="text-4xl font-bold font-mono">{{ resultModal.score }}<span class="text-sm">%</span></span>
+                            <span class="text-xs text-slate-400 uppercase tracking-widest mt-1">正确率</span>
+                        </div>
                     </div>
+                    
+                    <h3 class="text-2xl font-bold mb-8">本次练习报告</h3>
+                    
+                    <div class="grid grid-cols-3 gap-4 mb-8">
+                        <div class="bg-slate-700/50 rounded-xl p-3 border border-slate-600">
+                            <div class="text-2xl font-bold text-slate-200">{{ resultModal.total }}</div>
+                            <div class="text-[10px] text-slate-400 uppercase">总填空</div>
+                        </div>
+                        <div class="bg-slate-700/50 rounded-xl p-3 border border-slate-600">
+                            <div class="text-2xl font-bold text-emerald-400">{{ resultModal.correct }}</div>
+                            <div class="text-[10px] text-slate-400 uppercase">正确</div>
+                        </div>
+                        <div class="bg-slate-700/50 rounded-xl p-3 border border-slate-600">
+                            <div class="text-2xl font-bold text-red-400">{{ resultModal.wrong }}</div>
+                            <div class="text-[10px] text-slate-400 uppercase">错误</div>
+                        </div>
+                    </div>
+
+                    <button @click="resultModal.show = false" class="w-full py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-200 transition">
+                        继续学习 / 修改错题
+                    </button>
                 </div>
             </div>
         </div>
 
         <div v-if="showAnswerModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in" @click.self="closeAnswerModal">
             <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl scale-up flex flex-col overflow-hidden relative">
-                
                 <div class="p-6 bg-slate-50 border-b border-slate-100 text-center relative">
                     <h3 class="font-bold text-lg text-slate-700">请填空</h3>
                     <button @click="closeAnswerModal" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-500 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
                 </div>
-
                 <div class="p-8 flex flex-col items-center gap-8">
                     <div class="relative group">
                         <button @click="toggleSpeech" 
@@ -294,61 +337,49 @@ export default {
                         <div class="mt-4 text-sm font-bold transition-colors text-center" :class="isListening ? 'text-red-500' : 'text-slate-400'">
                             {{ isListening ? '正在聆听... (点击停止)' : '点击麦克风说话' }}
                         </div>
-                        
-                        <div v-if="isListening" class="absolute inset-0 rounded-full border-4 border-red-400 opacity-50 animate-ping"></div>
                     </div>
-
                     <div class="w-full space-y-2">
                         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide text-center">识别结果 (可手动修改)</label>
                         <div class="relative">
-                            <input ref="answerInputRef" 
-                                   v-model="currentAnswer" 
-                                   @keyup.enter="confirmAnswer"
-                                   placeholder="等待语音或直接输入..." 
-                                   class="w-full px-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl text-center font-bold text-slate-800 text-xl outline-none focus:border-indigo-500 focus:bg-white transition shadow-inner"
-                            >
+                            <input ref="answerInputRef" v-model="currentAnswer" @keyup.enter="confirmAnswer" placeholder="等待语音或直接输入..." class="w-full px-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl text-center font-bold text-slate-800 text-xl outline-none focus:border-indigo-500 focus:bg-white transition shadow-inner">
                             <button v-if="currentAnswer" @click="currentAnswer=''" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 p-2"><i class="fas fa-times-circle"></i></button>
                         </div>
                     </div>
                 </div>
-
                 <div class="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
                     <button @click="closeAnswerModal" class="flex-1 py-3 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">取消</button>
-                    <button @click="confirmAnswer" 
-                            class="flex-1 py-3 bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                            :disabled="!currentAnswer.trim()">
+                    <button @click="confirmAnswer" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" :disabled="!currentAnswer.trim()">
                         确认填入 <i class="fas fa-check ml-1"></i>
                     </button>
                 </div>
             </div>
         </div>
-
     </div>
     `,
     directives: {
-        focus: {
-            mounted: (el) => el.focus()
-        }
+        focus: { mounted: (el) => el.focus() }
     },
     setup(props, { emit }) {
         const currentSubject = ref('all');
         const currentGrade = ref('all');
-        
-        // 新建/编辑相关
         const showAddModal = ref(false);
         const isEditing = ref(false);
         const editingId = ref(null);
         const newItem = ref({ subject: '数学', grade: '', title: '', content: '' });
 
-        // 背诵相关
+        // 背诵与状态
         const showReciteModal = ref(false);
         const currentReciteItem = ref(null);
         const parsedClozeContent = ref([]);
+        const isReviewMode = ref(false);
         
-        // 复习模式相关
-        const isReviewMode = ref(false); 
+        // --- 核心状态 ---
+        const userAnswers = ref({}); // { itemId: { index: 'value' } }
+        const itemGradedStates = ref({}); // { itemId: { index: 'graded' | 'editing' } } -> 记录每个空的判题状态
         
-        // 答题卡相关
+        const isGrading = ref(false);
+        const resultModal = ref({ show: false, total: 0, correct: 0, wrong: 0, score: 0 }); // 结果统计对象
+        
         const showAnswerModal = ref(false);
         const currentAnswer = ref('');
         const activeClozeIndex = ref(null);
@@ -356,7 +387,6 @@ export default {
         const answerInputRef = ref(null);
         let recognition = null; 
 
-        // 模式配置
         const modeConfig = computed(() => {
             const configs = {
                 cloze: { title: '挖空填空', subtitle: 'Cloze Deletion', icon: 'fas fa-highlighter', colorClass: 'bg-amber-500', btnClass: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200', activeItemClass: 'bg-amber-50 text-amber-600', gradientClass: 'from-amber-400 to-orange-500', actionText: '开始背诵', actionIcon: 'fas fa-eye', actionBtnClass: 'bg-amber-50 text-amber-600 hover:bg-amber-100' },
@@ -382,7 +412,13 @@ export default {
             );
         });
 
-        // --- 编辑逻辑 ---
+        const getListTitleClass = (item) => {
+            if (currentReciteItem.value && currentReciteItem.value.id === item.id) return 'text-indigo-400';
+            if (item.status === 'correct') return 'text-emerald-500 font-bold';
+            if (item.status === 'error') return 'text-red-500 font-bold';
+            return 'text-slate-300';
+        };
+
         const openAddModal = (item) => {
             if (item) {
                 isEditing.value = true;
@@ -410,44 +446,38 @@ export default {
             showAddModal.value = false;
         };
 
-        // --- Excel 导入导出逻辑 ---
-        const downloadTemplate = () => {
-            window.open('/api/concepts/template');
-        };
-
+        const downloadTemplate = () => window.open('/api/concepts/template');
         const handleFileUpload = async (event) => {
             const file = event.target.files[0];
             if (!file) return;
-
             const formData = new FormData();
             formData.append('file', file);
-
             try {
-                const res = await fetch('/api/concepts/upload', {
-                    method: 'POST',
-                    body: formData
-                });
+                const res = await fetch('/api/concepts/upload', { method: 'POST', body: formData });
                 const data = await res.json();
-                
                 if (data.success) {
                     alert(`✅ 成功导入 ${data.count} 条新知识点！`);
-                    emit('refresh'); // 通知父组件刷新数据
-                    showAddModal.value = false;
+                    emit('refresh');
                 } else {
                     alert('❌ 导入失败: ' + (data.message || '请检查文件格式'));
                 }
             } catch (e) {
-                console.error(e);
-                alert('⚠️ 上传过程中发生错误');
+                alert('⚠️ 上传错误');
             }
-            event.target.value = ''; // 重置 file input
+            event.target.value = '';
         };
 
-        // --- 背诵逻辑 ---
+        // --- 核心：背诵流程与状态 ---
         const startRecitation = (item) => {
+            // 重置列表状态
+            currentReciteList.value.forEach(i => i.status = null);
+            // 重置所有判题状态记录，开始新一轮背诵
+            userAnswers.value = {};
+            itemGradedStates.value = {};
+            
             currentReciteItem.value = item;
             initClozeContent(item);
-            isReviewMode.value = false; 
+            isReviewMode.value = false;
             showReciteModal.value = true;
         };
 
@@ -460,10 +490,11 @@ export default {
             if (props.mode === 'cloze') {
                 const regex = /(\{\{.+?\}\})/g;
                 const parts = item.content.split(regex);
-                parsedClozeContent.value = parts.map(part => {
+                parsedClozeContent.value = parts.map((part, index) => {
                     if (part.startsWith('{{') && part.endsWith('}}')) {
                         const answer = part.slice(2, -2);
-                        return { type: 'cloze', val: part, userVal: '', answer: answer };
+                        const savedVal = userAnswers.value[item.id] ? userAnswers.value[item.id][index] : '';
+                        return { type: 'cloze', val: part, userVal: savedVal, answer: answer };
                     } else {
                         return { type: 'text', val: part };
                     }
@@ -475,19 +506,19 @@ export default {
             showReciteModal.value = false;
             parsedClozeContent.value = [];
             isReviewMode.value = false;
+            userAnswers.value = {};
+            itemGradedStates.value = {};
             stopSpeech();
         };
 
-        // --- 答题卡与语音逻辑 ---
+        // --- 核心：答题与状态管理 ---
         const openAnswerModal = (index) => {
             const existingVal = parsedClozeContent.value[index].userVal;
             currentAnswer.value = existingVal || '';
             activeClozeIndex.value = index;
             isListening.value = false;
             showAnswerModal.value = true;
-            nextTick(() => {
-                if (answerInputRef.value) answerInputRef.value.focus();
-            });
+            nextTick(() => { if (answerInputRef.value) answerInputRef.value.focus(); });
         };
 
         const closeAnswerModal = () => {
@@ -496,97 +527,142 @@ export default {
             activeClozeIndex.value = null;
         };
 
-        const toggleSpeech = () => {
-            if (isListening.value) stopSpeech();
-            else startSpeech();
-        };
-
-        const startSpeech = () => {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return alert("您的浏览器不支持语音识别。");
-
-            recognition = new SpeechRecognition();
-            recognition.lang = 'zh-CN';
-            recognition.interimResults = true;
-            recognition.maxAlternatives = 1;
-
-            recognition.onstart = () => { isListening.value = true; };
-            recognition.onend = () => { isListening.value = false; };
-            
-            recognition.onresult = (event) => {
-                let text = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    text += event.results[i][0].transcript;
-                }
-                const cleaned = text.replace(/[。.,，?？]$/, '');
-                if (cleaned) currentAnswer.value = cleaned;
-            };
-
-            recognition.start();
-        };
-
-        const stopSpeech = () => {
-            if (recognition) { recognition.stop(); recognition = null; }
-            isListening.value = false;
-        };
-
         const confirmAnswer = () => {
-            if (activeClozeIndex.value !== null) {
+            if (activeClozeIndex.value !== null && currentReciteItem.value) {
+                // 更新视图
                 parsedClozeContent.value[activeClozeIndex.value].userVal = currentAnswer.value;
-                checkAllCompleted();
+                
+                // 保存答案
+                const itemId = currentReciteItem.value.id;
+                if (!userAnswers.value[itemId]) userAnswers.value[itemId] = {};
+                userAnswers.value[itemId][activeClozeIndex.value] = currentAnswer.value;
+                
+                // [关键逻辑] 用户修改了答案，将该空的判题状态重置为 "editing" (变回蓝色)
+                // 这样只有修改的空变蓝，其他空保持红/橙
+                if (!itemGradedStates.value[itemId]) itemGradedStates.value[itemId] = {};
+                itemGradedStates.value[itemId][activeClozeIndex.value] = 'editing';
             }
             closeAnswerModal();
         };
 
-        const checkAllCompleted = () => {
-            const isAllCorrect = parsedClozeContent.value.every(segment => {
-                if (segment.type === 'text') return true;
-                return segment.userVal === segment.answer;
-            });
+        // --- 核心：批量判题与统计 ---
+        const submitCheck = () => {
+            isGrading.value = true;
+            setTimeout(() => {
+                let totalBlanks = 0;
+                let correctBlanks = 0;
+                let wrongBlanks = 0;
 
-            if (isAllCorrect && currentReciteItem.value) {
-                if (!currentReciteItem.value.lastReview) {
-                    currentReciteItem.value.lastReview = new Date().toISOString(); 
-                    emit('update-concept', currentReciteItem.value.id, { lastReview: new Date().toISOString() });
-                }
+                currentReciteList.value.forEach(item => {
+                    const splitRegex = /(\{\{.+?\}\})/g;
+                    const parts = item.content.split(splitRegex);
+                    
+                    let isItemCorrect = true;
+                    let hasCloze = false;
+
+                    parts.forEach((part, idx) => {
+                        if (part.startsWith('{{') && part.endsWith('}}')) {
+                            hasCloze = true;
+                            totalBlanks++;
+                            
+                            const standardAns = part.slice(2, -2);
+                            const userAns = userAnswers.value[item.id] ? userAnswers.value[item.id][idx] : '';
+                            
+                            // 判题逻辑
+                            const isSegmentCorrect = userAns === standardAns;
+                            
+                            // 更新统计
+                            if (isSegmentCorrect) correctBlanks++; else wrongBlanks++;
+                            
+                            // 更新每一空的判题状态为 'graded' (锁定颜色)
+                            if (!itemGradedStates.value[item.id]) itemGradedStates.value[item.id] = {};
+                            itemGradedStates.value[item.id][idx] = 'graded';
+
+                            if (!isSegmentCorrect) isItemCorrect = false;
+                        }
+                    });
+
+                    // 更新题目整体状态
+                    if (hasCloze) {
+                        const newStatus = isItemCorrect ? 'correct' : 'error';
+                        item.status = newStatus;
+                        item.lastReview = new Date().toISOString();
+                        emit('update-concept', item.id, { lastReview: new Date().toISOString(), status: newStatus });
+                    }
+                });
+
+                isGrading.value = false;
+                
+                // 显示自定义结果弹窗
+                resultModal.value = {
+                    show: true,
+                    total: totalBlanks,
+                    correct: correctBlanks,
+                    wrong: wrongBlanks,
+                    score: totalBlanks > 0 ? Math.round((correctBlanks / totalBlanks) * 100) : 0
+                };
+                
+            }, 1500);
+        };
+
+        // --- 核心：样式类逻辑 ---
+        const getClozeClass = (segment, index) => {
+            const itemId = currentReciteItem.value ? currentReciteItem.value.id : null;
+            // 检查当前空的状态：默认为 'editing' (null)
+            const state = (itemId && itemGradedStates.value[itemId]) ? itemGradedStates.value[itemId][index] : 'editing';
+
+            // 状态：编辑中 (显示蓝色)
+            if (state !== 'graded') {
+                if (segment.userVal) return 'border-blue-400 text-blue-600 font-bold bg-blue-50';
+                return 'border-blue-200 text-transparent';
             }
+            
+            // 状态：已判题 (显示橙/红)
+            if (segment.userVal === segment.answer) return 'border-orange-400 text-orange-500 font-bold bg-orange-50';
+            return 'border-red-400 text-red-500 font-bold bg-red-50 line-through decoration-red-300';
         };
 
-        const getClozeClass = (segment) => {
-            if (!segment.userVal) return 'border-indigo-300 text-transparent'; 
-            if (segment.userVal === segment.answer) return 'border-orange-400 text-orange-500 font-bold'; 
-            return 'border-red-400 text-red-500 font-bold'; 
+        const toggleSpeech = () => { if (isListening.value) stopSpeech(); else startSpeech(); };
+        const startSpeech = () => {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return alert("您的浏览器不支持语音识别。");
+            recognition = new SpeechRecognition();
+            recognition.lang = 'zh-CN';
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            recognition.onstart = () => { isListening.value = true; };
+            recognition.onend = () => { isListening.value = false; };
+            recognition.onresult = (event) => {
+                let text = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) text += event.results[i][0].transcript;
+                if (text) currentAnswer.value = text.replace(/[。.,，?？]$/, '');
+            };
+            recognition.start();
         };
+        const stopSpeech = () => { if (recognition) { recognition.stop(); recognition = null; } isListening.value = false; };
 
-        onUnmounted(() => { stopSpeech(); });
-
-        // --- 辅助功能 ---
-        const formatClozePreview = (text) => {
-            if (!text) return '';
-            return text.replace(/\{\{(.+?)\}\}/g, '<span class="border-b-2 border-amber-400 font-bold text-amber-600 px-1 bg-amber-50 rounded mx-0.5">$1</span>');
-        };
-
+        const formatClozePreview = (text) => text ? text.replace(/\{\{(.+?)\}\}/g, '<span class="border-b-2 border-amber-400 font-bold text-amber-600 px-1 bg-amber-50 rounded mx-0.5">$1</span>') : '';
         const getSubjectColor = (sub) => {
             const colors = { '数学': 'bg-red-50 text-red-600 border-red-100', '物理': 'bg-blue-50 text-blue-600 border-blue-100', '化学': 'bg-purple-50 text-purple-600 border-purple-100', '生物': 'bg-emerald-50 text-emerald-600 border-emerald-100', '地理': 'bg-amber-50 text-amber-600 border-amber-100', '语文': 'bg-orange-50 text-orange-600 border-orange-100', '英语': 'bg-indigo-50 text-indigo-600 border-indigo-100' };
             return colors[sub] || 'bg-slate-50 text-slate-600 border-slate-100';
         };
 
-        if (props.initialAction === 'add') {
-             nextTick(() => openAddModal(null));
-        }
+        if (props.initialAction === 'add') nextTick(() => openAddModal(null));
+        onUnmounted(() => stopSpeech());
 
         return {
             currentSubject, currentGrade, displayList, modeConfig,
             showAddModal, isEditing, newItem,
             showReciteModal, currentReciteItem, parsedClozeContent, isReviewMode,
             openAddModal, handleSave, filteredList, getSubjectColor, formatClozePreview,
-            startRecitation, exitRecitation, switchReciteItem, currentReciteList, getClozeClass,
+            startRecitation, exitRecitation, switchReciteItem, currentReciteList, 
+            getClozeClass, getListTitleClass,
             
             showAnswerModal, currentAnswer, isListening, answerInputRef,
             openAnswerModal, closeAnswerModal, toggleSpeech, confirmAnswer,
             
-            // Excel 导入相关导出
-            downloadTemplate, handleFileUpload
+            downloadTemplate, handleFileUpload,
+            submitCheck, isGrading, resultModal
         };
     }
 }
