@@ -1,11 +1,9 @@
 /**
  * js/apps/ConceptApp.js
  * 概念学习通用应用框架
- * 迭代 v3.1: 
- * 1. 交互革命：移除填空弹窗，改为行内 Input 直接填写
- * 2. 语音优化：输入框获得焦点时，悬浮显示麦克风按钮
- * 3. 体验提升：支持回车键(Enter)自动跳转下一个空
- * 4. 视觉保留：沿用蓝/橙/红的状态颜色系统
+ * 迭代 v3.3 (修复版): 
+ * 1. 修复控制台报错：调整代码执行顺序，确保 isDueForReview 等辅助函数在 computed 之前定义
+ * 2. 保持所有 v3.2 功能：遗忘曲线册、当日复习、判题逻辑、行内填写
  */
 import { ref, computed, nextTick, onUnmounted, watch } from 'vue';
 
@@ -55,12 +53,28 @@ export default {
                 </div>
                 
                 <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
+                        <button @click="showEbbinghausModal = true" class="px-3 py-2 bg-white text-slate-500 hover:text-indigo-600 hover:bg-slate-50 font-bold rounded-xl shadow-sm border border-slate-200 transition flex items-center gap-2 text-xs">
+                            <i class="fas fa-calendar-alt"></i> <span class="hidden lg:inline">遗忘曲线册</span>
+                        </button>
+                        
+                        <button @click="startDailyReview" 
+                                :disabled="dailyReviewCount === 0"
+                                class="px-3 py-2 font-bold rounded-xl shadow-sm border transition flex items-center gap-2 text-xs relative group"
+                                :class="dailyReviewCount > 0 ? 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 hover:scale-105 cursor-pointer' : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'"
+                        >
+                            <i class="fas fa-bolt"></i> 
+                            <span class="hidden lg:inline">当日复习</span>
+                            <span v-if="dailyReviewCount > 0" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-bounce">{{ dailyReviewCount }}</span>
+                        </button>
+                    </div>
+
                     <div v-if="mode === 'cloze'" class="flex items-center gap-2 mr-2 border-r border-slate-200 pr-4">
-                        <button @click="downloadTemplate" class="px-3 py-2 bg-white text-slate-500 hover:text-indigo-600 hover:bg-slate-50 font-bold rounded-xl shadow-sm border border-slate-200 transition flex items-center gap-2 text-xs">
-                            <i class="fas fa-download"></i> <span class="hidden lg:inline">下载模板</span>
+                        <button @click="downloadTemplate" class="px-3 py-2 bg-white text-slate-500 hover:text-indigo-600 hover:bg-slate-50 font-bold rounded-xl shadow-sm border border-slate-200 transition flex items-center gap-2 text-xs" title="下载模板">
+                            <i class="fas fa-download"></i>
                         </button>
                         <label class="px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl shadow-sm border border-emerald-100 transition flex items-center gap-2 text-xs cursor-pointer relative overflow-hidden group">
-                            <i class="fas fa-file-excel"></i> <span class="hidden lg:inline">导入题目</span>
+                            <i class="fas fa-file-excel"></i> <span class="hidden lg:inline">导入</span>
                             <div class="absolute inset-0 bg-emerald-200 opacity-0 group-hover:opacity-20 transition"></div>
                             <input type="file" accept=".xlsx, .xls" class="hidden" @change="handleFileUpload">
                         </label>
@@ -90,6 +104,9 @@ export default {
                         <div v-else-if="item.status === 'error'" class="absolute top-3 right-3 bg-red-50 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-100 flex items-center gap-1">
                             <i class="fas fa-exclamation-circle"></i> 错题
                         </div>
+                        <div v-if="isDueForReview(item)" class="absolute top-3 right-16 bg-indigo-100 text-indigo-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-200 flex items-center gap-1">
+                            <i class="fas fa-clock"></i> 待复习
+                        </div>
 
                         <div class="flex justify-between items-start mb-3">
                             <div class="flex gap-1">
@@ -118,6 +135,48 @@ export default {
                         <button @click="startRecitation(item)" class="w-full py-2 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2" :class="modeConfig.actionBtnClass">
                             <i :class="modeConfig.actionIcon"></i> {{ modeConfig.actionText }}
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showEbbinghausModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] flex items-center justify-center p-4 animate-fade-in" @click.self="showEbbinghausModal = false">
+            <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl p-8 scale-up max-h-[85vh] flex flex-col">
+                <div class="flex justify-between items-center mb-6 shrink-0">
+                    <div>
+                        <h3 class="text-2xl font-bold text-slate-800">遗忘曲线册</h3>
+                        <p class="text-sm text-slate-400">未来的复习任务时刻表</p>
+                    </div>
+                    <button @click="showEbbinghausModal = false" class="w-10 h-10 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                    <div v-if="Object.keys(scheduleStats).length === 0" class="text-center py-12 text-slate-300">
+                        <i class="fas fa-calendar-check text-4xl mb-3"></i>
+                        <p>目前没有待复习的错题</p>
+                    </div>
+                    
+                    <div v-else class="space-y-4">
+                        <div v-for="(count, date) in scheduleStats" :key="date" 
+                             class="flex items-center p-4 rounded-xl border transition group"
+                             :class="date === today ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-100'"
+                        >
+                            <div class="w-16 text-center shrink-0">
+                                <div class="text-xs font-bold uppercase tracking-wider" :class="date === today ? 'text-indigo-400' : 'text-slate-400'">{{ getDayName(date) }}</div>
+                                <div class="text-lg font-bold text-slate-700">{{ date.slice(5) }}</div>
+                            </div>
+                            
+                            <div class="flex-1 px-4">
+                                <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-indigo-400 rounded-full" :style="{ width: Math.min(count * 5, 100) + '%' }"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-3 shrink-0">
+                                <span class="font-bold text-slate-700">{{ count }} <span class="text-xs text-slate-400 font-normal">题</span></span>
+                                <span v-if="date === today" class="px-2 py-1 bg-indigo-500 text-white text-[10px] font-bold rounded-lg">今日</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -173,7 +232,10 @@ export default {
                 <div class="flex items-center gap-4">
                     <button @click="exitRecitation" class="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition shadow-sm border border-slate-700 flex items-center justify-center"><i class="fas fa-times"></i></button>
                     <div>
-                        <h2 class="text-xl font-bold text-white">{{ currentReciteItem.title }}</h2>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            {{ currentReciteItem.title }}
+                            <span v-if="isDailyReviewMode" class="text-xs bg-indigo-500 text-white px-2 py-0.5 rounded border border-indigo-400 shadow-sm">⚡️ 今日复习</span>
+                        </h2>
                         <span class="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">{{ currentReciteItem.subject }} · {{ currentReciteItem.grade }}</span>
                     </div>
                 </div>
@@ -191,8 +253,8 @@ export default {
 
             <div class="flex flex-1 overflow-hidden relative">
                 <div class="w-72 border-r border-slate-800 bg-slate-900/50 flex flex-col overflow-hidden">
-                    <div class="p-4 border-b border-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider">
-                        知识清单 ({{ currentReciteList.length }})
+                    <div class="p-4 border-b border-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider flex justify-between items-center">
+                        <span>{{ isDailyReviewMode ? '⚡️ 今日任务' : '知识清单' }} ({{ currentReciteList.length }})</span>
                     </div>
                     <div class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
                         <div v-for="item in currentReciteList" :key="item.id" 
@@ -254,7 +316,7 @@ export default {
                                     <input v-else
                                            type="text"
                                            v-model="segment.userVal"
-                                           @focus="handleInputFocus(idx, segment)"
+                                           @focus="handleInputFocus(idx)"
                                            @input="handleInputChange(idx)"
                                            @keyup.enter="focusNextInput(idx)"
                                            :id="'cloze-input-' + idx"
@@ -338,6 +400,26 @@ export default {
         focus: { mounted: (el) => el.focus() }
     },
     setup(props, { emit }) {
+        // --- 1. 基础工具函数定义 (最优先，避免死区问题) ---
+        const today = computed(() => new Date().toISOString().split('T')[0]);
+
+        const isDueForReview = (item) => {
+            return item.reviewSchedule && item.reviewSchedule.includes(today.value);
+        };
+
+        const getDayName = (dateStr) => {
+            const date = new Date(dateStr);
+            const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            return days[date.getDay()];
+        };
+
+        const addDays = (dateStr, days) => {
+            const result = new Date(dateStr);
+            result.setDate(result.getDate() + days);
+            return result.toISOString().split('T')[0];
+        };
+
+        // --- 2. 响应式状态定义 ---
         const currentSubject = ref('all');
         const currentGrade = ref('all');
         const showAddModal = ref(false);
@@ -345,24 +427,23 @@ export default {
         const editingId = ref(null);
         const newItem = ref({ subject: '数学', grade: '', title: '', content: '' });
 
-        // 背诵与状态
+        const showEbbinghausModal = ref(false);
+        const isDailyReviewMode = ref(false);
         const showReciteModal = ref(false);
         const currentReciteItem = ref(null);
         const parsedClozeContent = ref([]);
         const isReviewMode = ref(false);
         
-        // 核心状态
-        const userAnswers = ref({}); // { itemId: { index: 'value' } }
-        const itemGradedStates = ref({}); // { itemId: { index: 'graded' | 'editing' } }
-        
+        const userAnswers = ref({}); 
+        const itemGradedStates = ref({});
         const isGrading = ref(false);
         const resultModal = ref({ show: false, total: 0, correct: 0, wrong: 0, score: 0 });
         
-        // 交互状态
         const activeInputIndex = ref(null);
         const isListening = ref(false);
         let recognition = null; 
 
+        // --- 3. 计算属性 (依赖工具函数) ---
         const modeConfig = computed(() => {
             const configs = {
                 cloze: { title: '挖空填空', subtitle: 'Cloze Deletion', icon: 'fas fa-highlighter', colorClass: 'bg-amber-500', btnClass: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200', activeItemClass: 'bg-amber-50 text-amber-600', gradientClass: 'from-amber-400 to-orange-500', actionText: '开始背诵', actionIcon: 'fas fa-eye', actionBtnClass: 'bg-amber-50 text-amber-600 hover:bg-amber-100' },
@@ -381,6 +462,9 @@ export default {
         const displayList = computed(() => filteredList(currentSubject.value));
 
         const currentReciteList = computed(() => {
+            if (isDailyReviewMode.value) {
+                return props.concepts.filter(isDueForReview);
+            }
             if (!currentReciteItem.value) return [];
             return props.concepts.filter(c => 
                 c.subject === currentReciteItem.value.subject && 
@@ -388,6 +472,24 @@ export default {
             );
         });
 
+        const scheduleStats = computed(() => {
+            const stats = {};
+            props.concepts.forEach(item => {
+                if (item.reviewSchedule && Array.isArray(item.reviewSchedule)) {
+                    item.reviewSchedule.forEach(date => {
+                        if (!stats[date]) stats[date] = 0;
+                        stats[date]++;
+                    });
+                }
+            });
+            return Object.keys(stats).sort().reduce((obj, key) => { obj[key] = stats[key]; return obj; }, {});
+        });
+
+        const dailyReviewCount = computed(() => {
+            return props.concepts.filter(isDueForReview).length;
+        });
+
+        // --- 4. 业务逻辑函数 ---
         const getListTitleClass = (item) => {
             if (currentReciteItem.value && currentReciteItem.value.id === item.id) return 'text-indigo-400';
             if (item.status === 'correct') return 'text-emerald-500 font-bold';
@@ -395,63 +497,45 @@ export default {
             return 'text-slate-300';
         };
 
-        const openAddModal = (item) => {
-            if (item) {
-                isEditing.value = true;
-                editingId.value = item.id;
-                newItem.value = JSON.parse(JSON.stringify(item));
-            } else {
-                isEditing.value = false;
-                editingId.value = null;
-                const defaultSubject = props.subjects.length > 0 ? props.subjects[0] : '数学';
-                const defaultGrade = props.grades.length > 0 ? props.grades[0] : '';
-                newItem.value = { subject: defaultSubject, grade: defaultGrade, title: '', content: '' };
+        const getClozeClass = (segment, index) => {
+            const itemId = currentReciteItem.value ? currentReciteItem.value.id : null;
+            const state = (itemId && itemGradedStates.value[itemId]) ? itemGradedStates.value[itemId][index] : 'editing';
+
+            if (state !== 'graded') {
+                if (segment.userVal) return 'border-blue-400 text-blue-600 font-bold bg-blue-50';
+                return 'border-blue-200 text-transparent hover:border-blue-300';
             }
-            showAddModal.value = true;
+            if ((segment.userVal || '').trim() === segment.answer.trim()) return 'border-orange-400 text-orange-500 font-bold bg-orange-50';
+            return 'border-red-400 text-red-500 font-bold bg-red-50 line-through decoration-red-300';
         };
 
-        const handleSave = () => {
-            if (!newItem.value.title) return alert('请输入标题');
-            if (props.mode === 'cloze' && !/\{\{.+?\}\}/.test(newItem.value.content)) return alert('挖空内容必须包含至少一个 {{关键词}}');
-            
-            if (isEditing.value) {
-                emit('update-concept', editingId.value, newItem.value);
-            } else {
-                emit('add-concept', { type: props.mode, ...newItem.value });
-            }
-            showAddModal.value = false;
+        const getSubjectColor = (sub) => {
+            const colors = { '数学': 'bg-red-50 text-red-600 border-red-100', '物理': 'bg-blue-50 text-blue-600 border-blue-100', '化学': 'bg-purple-50 text-purple-600 border-purple-100', '生物': 'bg-emerald-50 text-emerald-600 border-emerald-100', '地理': 'bg-amber-50 text-amber-600 border-amber-100', '语文': 'bg-orange-50 text-orange-600 border-orange-100', '英语': 'bg-indigo-50 text-indigo-600 border-indigo-100' };
+            return colors[sub] || 'bg-slate-50 text-slate-600 border-slate-100';
         };
 
-        const downloadTemplate = () => window.open('/api/concepts/template');
-        const handleFileUpload = async (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('file', file);
-            try {
-                const res = await fetch('/api/concepts/upload', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (data.success) {
-                    alert(`✅ 成功导入 ${data.count} 条新知识点！`);
-                    emit('refresh');
-                } else {
-                    alert('❌ 导入失败: ' + (data.message || '请检查文件格式'));
-                }
-            } catch (e) {
-                alert('⚠️ 上传错误');
-            }
-            event.target.value = '';
-        };
-
-        // --- 核心流程 ---
-        const startRecitation = (item) => {
-            currentReciteList.value.forEach(i => i.status = null);
+        const resetReciteState = () => {
+            if(currentReciteList.value) currentReciteList.value.forEach(i => i.status = null);
             userAnswers.value = {};
             itemGradedStates.value = {};
-            
+            isReviewMode.value = false;
+        };
+
+        const startRecitation = (item) => {
+            isDailyReviewMode.value = false;
+            resetReciteState();
             currentReciteItem.value = item;
             initClozeContent(item);
-            isReviewMode.value = false;
+            showReciteModal.value = true;
+        };
+
+        const startDailyReview = () => {
+            const dailyItems = props.concepts.filter(isDueForReview);
+            if (dailyItems.length === 0) return;
+            isDailyReviewMode.value = true;
+            resetReciteState();
+            currentReciteItem.value = dailyItems[0];
+            initClozeContent(dailyItems[0]);
             showReciteModal.value = true;
         };
 
@@ -478,54 +562,34 @@ export default {
 
         const exitRecitation = () => {
             showReciteModal.value = false;
+            isDailyReviewMode.value = false;
             parsedClozeContent.value = [];
-            isReviewMode.value = false;
             userAnswers.value = {};
             itemGradedStates.value = {};
             activeInputIndex.value = null;
             stopSpeech();
         };
 
-        // --- 核心交互：行内输入与焦点 ---
-        const handleInputFocus = (index, segment) => {
-            activeInputIndex.value = index;
-            // 每次获得焦点，如果是已判题状态，不做改变；
-            // 只有当用户真的输入了内容 (handleInputChange) 才重置为编辑状态
-        };
-
+        const handleInputFocus = (index) => { activeInputIndex.value = index; };
         const handleInputChange = (index) => {
             if (!currentReciteItem.value) return;
             const itemId = currentReciteItem.value.id;
-            
-            // 1. 保存答案
             if (!userAnswers.value[itemId]) userAnswers.value[itemId] = {};
             userAnswers.value[itemId][index] = parsedClozeContent.value[index].userVal;
-            
-            // 2. 状态重置：只要修改了，就变回编辑状态(蓝色)
             if (!itemGradedStates.value[itemId]) itemGradedStates.value[itemId] = {};
             itemGradedStates.value[itemId][index] = 'editing';
         };
-
         const focusNextInput = (currentIndex) => {
-            // 简单的寻找下一个 input 的逻辑
-            // 实际场景中，parsedClozeContent 里可能有很多 text 类型的，需要找到下一个 type='cloze' 的 index
-            // 这里为了简化，直接尝试找 DOM ID
-            // 我们在 template 里加了 id="'cloze-input-' + idx"
-            
             let nextIndex = currentIndex + 1;
             while (nextIndex < parsedClozeContent.value.length) {
                 if (parsedClozeContent.value[nextIndex].type === 'cloze') {
                     const el = document.getElementById('cloze-input-' + nextIndex);
-                    if (el) {
-                        el.focus();
-                        return;
-                    }
+                    if (el) { el.focus(); return; }
                 }
                 nextIndex++;
             }
         };
 
-        // --- 核心：判题 ---
         const submitCheck = () => {
             isGrading.value = true;
             setTimeout(() => {
@@ -544,17 +608,12 @@ export default {
                         if (part.startsWith('{{') && part.endsWith('}}')) {
                             hasCloze = true;
                             totalBlanks++;
-                            
                             const standardAns = part.slice(2, -2);
                             const userAns = userAnswers.value[item.id] ? userAnswers.value[item.id][idx] : '';
                             const isSegmentCorrect = (userAns || '').trim() === standardAns.trim();
-                            
                             if (isSegmentCorrect) correctBlanks++; else wrongBlanks++;
-                            
-                            // 更新状态为已判题
                             if (!itemGradedStates.value[item.id]) itemGradedStates.value[item.id] = {};
                             itemGradedStates.value[item.id][idx] = 'graded';
-
                             if (!isSegmentCorrect) isItemCorrect = false;
                         }
                     });
@@ -563,47 +622,27 @@ export default {
                         const newStatus = isItemCorrect ? 'correct' : 'error';
                         item.status = newStatus;
                         item.lastReview = new Date().toISOString();
-                        emit('update-concept', item.id, { lastReview: new Date().toISOString(), status: newStatus });
+                        
+                        let updatedSchedule = item.reviewSchedule ? [...item.reviewSchedule] : [];
+                        if (!isItemCorrect) {
+                            const intervals = [1, 2, 4, 7, 15];
+                            intervals.forEach(day => {
+                                const nextDate = addDays(today.value, day);
+                                if (!updatedSchedule.includes(nextDate)) updatedSchedule.push(nextDate);
+                            });
+                            updatedSchedule.sort();
+                        } else if (isDailyReviewMode.value && isItemCorrect) {
+                            updatedSchedule = updatedSchedule.filter(d => d !== today.value);
+                        }
+                        emit('update-concept', item.id, { lastReview: new Date().toISOString(), status: newStatus, reviewSchedule: updatedSchedule });
                     }
                 });
-
                 isGrading.value = false;
-                resultModal.value = {
-                    show: true,
-                    total: totalBlanks,
-                    correct: correctBlanks,
-                    wrong: wrongBlanks,
-                    score: totalBlanks > 0 ? Math.round((correctBlanks / totalBlanks) * 100) : 0
-                };
+                resultModal.value = { show: true, total: totalBlanks, correct: correctBlanks, wrong: wrongBlanks, score: totalBlanks > 0 ? Math.round((correctBlanks / totalBlanks) * 100) : 0 };
             }, 1500);
         };
 
-        // --- 样式控制 ---
-        const getClozeClass = (segment, index) => {
-            const itemId = currentReciteItem.value ? currentReciteItem.value.id : null;
-            const state = (itemId && itemGradedStates.value[itemId]) ? itemGradedStates.value[itemId][index] : 'editing';
-
-            // 编辑状态 / 未判题 -> 蓝色
-            if (state !== 'graded') {
-                if (segment.userVal) return 'border-blue-400 text-blue-600 font-bold bg-blue-50';
-                return 'border-blue-200 text-transparent hover:border-blue-300';
-            }
-            
-            // 已判题 -> 橙(对)/红(错)
-            if ((segment.userVal || '').trim() === segment.answer.trim()) return 'border-orange-400 text-orange-500 font-bold bg-orange-50';
-            return 'border-red-400 text-red-500 font-bold bg-red-50 line-through decoration-red-300';
-        };
-
-        // --- 语音逻辑 ---
-        const toggleSpeech = (index) => {
-            if (isListening.value) {
-                stopSpeech();
-            } else {
-                activeInputIndex.value = index; // 确保激活的是点的那个
-                startSpeech();
-            }
-        };
-
+        const toggleSpeech = (index) => { if (isListening.value) stopSpeech(); else { activeInputIndex.value = index; startSpeech(); } };
         const startSpeech = () => {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) return alert("您的浏览器不支持语音识别。");
@@ -616,44 +655,52 @@ export default {
             recognition.onresult = (event) => {
                 let text = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) text += event.results[i][0].transcript;
-                if (text) {
-                    const cleanText = text.replace(/[。.,，?？]$/, '');
-                    // 直接写入 input model
-                    if (activeInputIndex.value !== null) {
-                        parsedClozeContent.value[activeInputIndex.value].userVal = cleanText;
-                        handleInputChange(activeInputIndex.value); // 触发保存和状态变更
-                    }
+                if (text && activeInputIndex.value !== null) {
+                    parsedClozeContent.value[activeInputIndex.value].userVal = text.replace(/[。.,，?？]$/, '');
+                    handleInputChange(activeInputIndex.value);
                 }
             };
             recognition.start();
         };
         const stopSpeech = () => { if (recognition) { recognition.stop(); recognition = null; } isListening.value = false; };
-
-        const formatClozePreview = (text) => text ? text.replace(/\{\{(.+?)\}\}/g, '<span class="border-b-2 border-amber-400 font-bold text-amber-600 px-1 bg-amber-50 rounded mx-0.5">$1</span>') : '';
-        const getSubjectColor = (sub) => {
-            const colors = { '数学': 'bg-red-50 text-red-600 border-red-100', '物理': 'bg-blue-50 text-blue-600 border-blue-100', '化学': 'bg-purple-50 text-purple-600 border-purple-100', '生物': 'bg-emerald-50 text-emerald-600 border-emerald-100', '地理': 'bg-amber-50 text-amber-600 border-amber-100', '语文': 'bg-orange-50 text-orange-600 border-orange-100', '英语': 'bg-indigo-50 text-indigo-600 border-indigo-100' };
-            return colors[sub] || 'bg-slate-50 text-slate-600 border-slate-100';
+        
+        const openAddModal = (item) => {
+            if (item) { isEditing.value = true; editingId.value = item.id; newItem.value = JSON.parse(JSON.stringify(item)); } 
+            else { isEditing.value = false; editingId.value = null; newItem.value = { subject: props.subjects[0] || '数学', grade: props.grades[0] || '', title: '', content: '' }; }
+            showAddModal.value = true;
         };
+        const handleSave = () => {
+            if (!newItem.value.title) return alert('请输入标题');
+            if (isEditing.value) emit('update-concept', editingId.value, newItem.value);
+            else emit('add-concept', { type: props.mode, ...newItem.value });
+            showAddModal.value = false;
+        };
+        const downloadTemplate = () => window.open('/api/concepts/template');
+        const handleFileUpload = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const res = await fetch('/api/concepts/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.success) { alert(`✅ 成功导入 ${data.count} 条！`); emit('refresh'); } else alert('❌ ' + data.message);
+            } catch (e) { alert('⚠️ 上传错误'); }
+            event.target.value = '';
+        };
+        const formatClozePreview = (text) => text ? text.replace(/\{\{(.+?)\}\}/g, '<span class="border-b-2 border-amber-400 font-bold text-amber-600 px-1 bg-amber-50 rounded mx-0.5">$1</span>') : '';
 
         if (props.initialAction === 'add') nextTick(() => openAddModal(null));
         onUnmounted(() => stopSpeech());
 
         return {
-            currentSubject, currentGrade, displayList, modeConfig,
-            showAddModal, isEditing, newItem,
-            showReciteModal, currentReciteItem, parsedClozeContent, isReviewMode,
+            currentSubject, currentGrade, displayList, modeConfig, today,
+            showAddModal, isEditing, newItem, showReciteModal, currentReciteItem, parsedClozeContent, isReviewMode,
             openAddModal, handleSave, filteredList, getSubjectColor, formatClozePreview,
-            startRecitation, exitRecitation, switchReciteItem, currentReciteList, 
-            getClozeClass, getListTitleClass,
-            
-            // 交互相关
+            startRecitation, exitRecitation, switchReciteItem, currentReciteList, getClozeClass, getListTitleClass,
             handleInputFocus, handleInputChange, focusNextInput, activeInputIndex,
-            
-            // 语音
-            toggleSpeech, isListening,
-            
-            downloadTemplate, handleFileUpload,
-            submitCheck, isGrading, resultModal
+            toggleSpeech, isListening, downloadTemplate, handleFileUpload, submitCheck, isGrading, resultModal,
+            showEbbinghausModal, scheduleStats, getDayName, dailyReviewCount, startDailyReview, isDailyReviewMode, isDueForReview
         };
     }
 }
