@@ -42,7 +42,8 @@ export default {
             ],
             conceptTools: [
                 { id: 'cloze', name: '挖空填空', icon: 'fas fa-highlighter', hoverClass: 'hover:text-amber-500 hover:border-amber-200', activeClass: 'bg-amber-500 text-white shadow-lg shadow-amber-500/40 transform -translate-y-2' },
-                { id: 'image', name: '图片遮挡', icon: 'fas fa-image', hoverClass: 'hover:text-pink-500 hover:border-pink-200', activeClass: 'bg-pink-500 text-white shadow-lg shadow-pink-500/40 transform -translate-y-2' },
+                // 把下面这行的 id 从 'image' 改为 'occlusion'
+                { id: 'occlusion', name: '图片遮挡', icon: 'fas fa-image', hoverClass: 'hover:text-pink-500 hover:border-pink-200', activeClass: 'bg-pink-500 text-white shadow-lg shadow-pink-500/40 transform -translate-y-2' },
                 { id: 'feynman', name: '费曼自测', icon: 'fas fa-chalkboard-teacher', hoverClass: 'hover:text-cyan-500 hover:border-cyan-200', activeClass: 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/40 transform -translate-y-2' }
             ]
         }

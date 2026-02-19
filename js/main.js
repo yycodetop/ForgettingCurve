@@ -1,7 +1,7 @@
 /**
  * js/main.js
- * 应用主入口 - 迭代版 v3.1
- * 变更：集成独立的 Feynman 数据源和逻辑
+ * 应用主入口 - 迭代版 v3.2
+ * 修复：正确注册并挂载 ImageOcclusionApp (图像遮挡组件)
  */
 import { createApp, ref, computed, onMounted } from 'vue';
 
@@ -10,15 +10,15 @@ import { useTasks } from './composables/useTasks.js';
 import { useVocabulary } from './composables/useVocabulary.js';
 import { usePomodoro } from './composables/usePomodoro.js';
 import { useConcepts } from './composables/useConcepts.js';
-import { useFeynman } from './composables/useFeynman.js'; // [新增]
-import { useImageOcclusion } from './composables/useImageOcclusion.js'; // [新增]
+import { useFeynman } from './composables/useFeynman.js';
+import { useImageOcclusion } from './composables/useImageOcclusion.js';
 
 // 导入组件
 import DashboardApp from './apps/DashboardApp.js';
 import EnglishApp from './apps/EnglishApp.js';
 import ConceptApp from './apps/ConceptApp.js';
 import FeynmanApp from './apps/FeynmanApp.js';
-import ImageOcclusionApp from './apps/ImageOcclusionApp.js'; // [新增]
+import ImageOcclusionApp from './apps/ImageOcclusionApp.js'; // 已引入
 import TheDock from './components/TheDock.js';
 
 const app = createApp({
@@ -27,6 +27,7 @@ const app = createApp({
         EnglishApp, 
         ConceptApp, 
         FeynmanApp, 
+        ImageOcclusionApp, // 修复1：必须在这里注册组件
         TheDock 
     },
     template: `
@@ -36,7 +37,7 @@ const app = createApp({
             <div class="font-bold text-xl flex items-center gap-2">
                 <span v-if="currentApp === 'dashboard'">👋 综合概览</span>
                 <span v-else-if="currentApp === 'english'">🔤 英语工作室</span>
-                <span v-else-if="['cloze', 'image'].includes(currentApp)">🧠 概念实验室</span>
+                <span v-else-if="currentApp === 'cloze'">🧠 概念实验室</span> 
                 <span v-else-if="currentApp === 'feynman'">🎓 费曼自测</span>
                 <span v-else-if="currentApp === 'occlusion'">🖼️ 图像遮挡</span>
             </div>
@@ -50,70 +51,34 @@ const app = createApp({
         <main class="flex-1 overflow-hidden p-6 pb-32 relative">
             
             <dashboard-app v-if="currentApp === 'dashboard'"
-                :calendar-days="calendarDays"
-                :current-day-tasks="currentDayTasks"
-                :all-tasks="tasks" 
-                :selected-date="selectedDate"
-                :start-day-of-week="startDayOfWeek"
-                :categories="categories"
-                :chart-data="chartData" 
-                :grades="grades" 
-                @select-date="selectDate"
-                @open-pomodoro="openPomodoroModal"
-                @open-rate="openRateModal"
-                @edit-task="openEditTaskModal"
-                @delete-task="deleteTask"
-                @add-category="addCategory"
-                @delete-category="deleteCategory"
-                @postpone-task="handlePostponeTask"
-                @switch-app="(id) => currentApp = id"
-                @quick-add-concept="handleQuickAddConcept"
-                @add-concept="handleDashboardAddConcept"
+                :calendar-days="calendarDays" :current-day-tasks="currentDayTasks" :all-tasks="tasks" :selected-date="selectedDate" :start-day-of-week="startDayOfWeek" :categories="categories" :chart-data="chartData" :grades="grades" 
+                @select-date="selectDate" @open-pomodoro="openPomodoroModal" @open-rate="openRateModal" @edit-task="openEditTaskModal" @delete-task="deleteTask" @add-category="addCategory" @delete-category="deleteCategory" @postpone-task="handlePostponeTask" @switch-app="(id) => currentApp = id" @quick-add-concept="handleQuickAddConcept" @add-concept="handleDashboardAddConcept"
             ></dashboard-app>
 
             <english-app v-if="currentApp === 'english'"
-                :books="books"
-                :current-book="currentBook"
-                :vocabulary="vocabulary"
-                :recitation-data="recitationData"
-                :subject-tasks="englishTasks"
-                :pos-options="posOptions"
-                :book-icons="bookIcons"
-                @select-book="selectBook"
-                @create-book="createBook"
-                @delete-book="deleteBook"
-                @update-book="updateBook"
-                @export-book="exportBook"
-                @request-recitation="handleRecitationRequest"
-                @add-word="handleAddWord"
-                @update-word="updateWord"
-                @delete-word="deleteWord"
-                @upload="handleVocabUpload"
-                @download="downloadTemplate"
+                :books="books" :current-book="currentBook" :vocabulary="vocabulary" :recitation-data="recitationData" :subject-tasks="englishTasks" :pos-options="posOptions" :book-icons="bookIcons" 
+                @select-book="selectBook" @create-book="createBook" @delete-book="deleteBook" @update-book="updateBook" @export-book="exportBook" @request-recitation="handleRecitationRequest" @add-word="handleAddWord" @update-word="updateWord" @delete-word="deleteWord" @upload="handleVocabUpload" @download="downloadTemplate"
             ></english-app>
 
-            <concept-app v-if="['cloze', 'image'].includes(currentApp)"
-                :mode="currentApp"
-                :concepts="getConceptsByType(currentApp)"
-                :subjects="categories"
-                :grades="grades"
-                :initial-action="conceptInitialAction"  
-                @add-concept="addConcept"
-                @update-concept="handleUpdateConcept"   
-                @delete-concept="deleteConcept"
-                @refresh="loadConcepts"
-                @back-home="currentApp = 'dashboard'"
+            <concept-app v-if="currentApp === 'cloze'"
+                :mode="currentApp" :concepts="getConceptsByType(currentApp)" :subjects="categories" :grades="grades" :initial-action="conceptInitialAction"  
+                @add-concept="addConcept" @update-concept="handleUpdateConcept" @delete-concept="deleteConcept" @refresh="loadConcepts" @back-home="currentApp = 'dashboard'"
             ></concept-app>
 
             <feynman-app v-if="currentApp === 'feynman'"
-                :concepts="feynmanList"
+                :concepts="feynmanList" :subjects="categories" :grades="grades" 
+                @add-concept="addFeynman" @update-concept="updateFeynman" @delete-concept="deleteFeynman" @back-home="currentApp = 'dashboard'"
+            ></feynman-app>
+
+            <image-occlusion-app v-if="currentApp === 'occlusion'"
                 :subjects="categories"
                 :grades="grades"
-                @add-concept="addFeynman"
-                @update-concept="updateFeynman"
-                @delete-concept="deleteFeynman"
+                :occlusions="occlusionList"
+                @add-occlusion="addOcclusion"
+                @update-occlusion="updateOcclusion"
+                @delete-occlusion="deleteOcclusion"
                 @back-home="currentApp = 'dashboard'"
-            ></feynman-app>
+            ></image-occlusion-app>
 
         </main>
 
@@ -220,13 +185,13 @@ const app = createApp({
     setup() {
         const API_BASE = '/api';
         
-        // --- 初始化各业务模块 ---
+        // 初始化各业务模块
         const taskModule = useTasks(API_BASE);
         const vocabModule = useVocabulary(API_BASE);
         const pomodoroModule = usePomodoro();
         const conceptModule = useConcepts(API_BASE);
-        const feynmanModule = useFeynman(API_BASE); // [新增] 初始化费曼模块
-        const occlusionModule = useImageOcclusion(API_BASE); // [新增]
+        const feynmanModule = useFeynman(API_BASE); 
+        const occlusionModule = useImageOcclusion(API_BASE); 
 
         const currentApp = ref('dashboard');
         const recitationData = ref([]); 
@@ -251,8 +216,8 @@ const app = createApp({
                 taskModule.loadTasks(), 
                 vocabModule.loadBooks(),
                 conceptModule.loadConcepts(),
-                feynmanModule.loadFeynman(),// [新增] 加载费曼数据
-                occlusionModule.loadOcclusion() // [新增] 加载数据
+                feynmanModule.loadFeynman(),
+                occlusionModule.loadOcclusion() 
             ]);
         });
 
@@ -287,7 +252,6 @@ const app = createApp({
             setTimeout(() => { conceptInitialAction.value = null; }, 500);
         };
         
-        // 此函数用于 Dashboard 快速添加，暂定添加为 Cloze
         const handleDashboardAddConcept = (newConcept) => {
             conceptModule.addConcept(newConcept);
         };
@@ -306,8 +270,8 @@ const app = createApp({
             ...vocabModule,
             ...pomodoroModule,
             ...conceptModule, 
-            ...feynmanModule, // [新增] 暴露费曼模块方法
-            ...occlusionModule, // [新增] 暴露图像遮挡模块方法
+            ...feynmanModule,
+            ...occlusionModule, // 确保这个模块向外暴露了数据，这样页面才能用
             
             handleAddWord,
             handleRecitationRequest,
