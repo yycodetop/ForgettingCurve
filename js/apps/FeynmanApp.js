@@ -1,13 +1,9 @@
 /**
  * js/apps/FeynmanApp.js
- * 费曼自测独立模块 - v4.0 (UI 重构版)
- * 视觉升级：
- * 1. 卡片设计：极简白底 + 悬浮阴影 + 动态光晕(复习到期)
- * 2. 交互优化：次要按钮自动隐藏，核心"启动"按钮突出
- * 3. 熟练度：改为更现代的能量条显示
- * 4. 完美继承：所有 Excel、语音、遗忘曲线逻辑保持不变
+ * 费曼自测独立模块 - v4.2 (完美排序修复版)
+ * 修复：置顶排序逻辑反向问题，以及旧数据无编号时异常置顶的问题。
  */
-import { ref, computed, nextTick, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 
 export default {
     props: ['concepts', 'subjects', 'grades'], 
@@ -121,6 +117,7 @@ export default {
                         <div class="flex justify-between items-start mb-4 relative z-10">
                             <div class="flex items-center gap-2">
                                 <span class="text-[10px] font-bold px-2.5 py-1 rounded-lg border bg-slate-50 text-slate-500 border-slate-100 tracking-wide">{{ item.subject }}</span>
+                                <span v-if="item.orderNum && item.orderNum > 0" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-600">No.{{ item.orderNum }}</span>
                                 <span v-if="isDueForReview(item)" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-indigo-100 text-indigo-600 flex items-center gap-1 animate-pulse">
                                     <i class="fas fa-clock"></i> 待复习
                                 </span>
@@ -192,19 +189,23 @@ export default {
                 </div>
                 
                 <div class="space-y-6">
-                    <div class="grid grid-cols-2 gap-5">
+                    <div class="grid grid-cols-3 gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">学科</label>
-                            <select v-model="newItem.subject" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-cyan-500 focus:bg-white transition">
+                            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wide">学科</label>
+                            <select v-model="newItem.subject" @change="handleSubjectGradeChange" class="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-cyan-500 focus:bg-white transition">
                                 <option v-for="s in subjects" :value="s">{{ s }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">年级</label>
-                            <select v-model="newItem.grade" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-cyan-500 focus:bg-white transition">
-                                <option value="" disabled>选择年级</option>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wide">年级</label>
+                            <select v-model="newItem.grade" @change="handleSubjectGradeChange" class="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-cyan-500 focus:bg-white transition">
+                                <option value="" disabled>选择</option>
                                 <option v-for="g in grades" :value="g">{{ g }}</option>
                             </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wide">排序编号</label>
+                            <input type="number" v-model.number="newItem.orderNum" class="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-cyan-600 outline-none focus:border-cyan-500 focus:bg-white transition" placeholder="自动计算">
                         </div>
                     </div>
 
@@ -367,17 +368,33 @@ export default {
         const searchQuery = ref('');
         const today = new Date().toISOString().split('T')[0];
 
+        // --- 核心修复：更健壮的排序逻辑 ---
         const filteredList = computed(() => {
             let list = [...props.concepts];
+            
+            // 1. 过滤
             if (currentSubject.value !== 'all') list = list.filter(c => c.subject === currentSubject.value);
             if (currentGrade.value !== 'all') list = list.filter(c => c.grade === currentGrade.value);
             if (searchQuery.value.trim()) {
                 const q = searchQuery.value.toLowerCase();
                 list = list.filter(c => c.title && c.title.toLowerCase().includes(q));
             }
+            
+            // 2. 排序
             return list.sort((a, b) => {
-                if (a.isPinned !== b.isPinned) return b.isPinned ? 1 : -1;
-                return (b.id - a.id);
+                // 规则 1：置顶优先（如果 A 置顶且 B 未置顶，A 排前面）
+                if (a.isPinned && !b.isPinned) return -1;
+                if (!a.isPinned && b.isPinned) return 1;
+                
+                // 规则 2：根据排序编号从小到大排序
+                // 如果旧数据没有 orderNum，将其设为 Infinity，这样无编号的会沉底
+                const orderA = (a.orderNum !== undefined && a.orderNum !== null && a.orderNum !== '') ? Number(a.orderNum) : Infinity;
+                const orderB = (b.orderNum !== undefined && b.orderNum !== null && b.orderNum !== '') ? Number(b.orderNum) : Infinity;
+                
+                if (orderA !== orderB) return orderA - orderB;
+                
+                // 规则 3：如果都没置顶且都没编号（或编号相同），按 ID 倒序（最新创建优先）
+                return b.id - a.id;
             });
         });
 
@@ -403,7 +420,14 @@ export default {
         const showAddModal = ref(false);
         const isEditing = ref(false);
         const editingId = ref(null);
-        const newItem = ref({ subject: '数学', grade: '', title: '', hints: '', content: '', isPinned: false, proficiency: 0, notes: '', reviewCount: 0, reviewSchedule: [] });
+        const newItem = ref({ subject: '通用', grade: '通用', title: '', hints: '', content: '', isPinned: false, proficiency: 0, notes: '', reviewCount: 0, reviewSchedule: [], orderNum: 1 });
+
+        // 计算指定学科和年级的下一个排序编号
+        const calculateNextOrderNum = (subject, grade) => {
+            const existing = props.concepts.filter(c => c.subject === subject && c.grade === grade);
+            const maxOrder = existing.reduce((max, c) => Math.max(max, Number(c.orderNum) || 0), 0);
+            return maxOrder + 1;
+        };
 
         const openAddModal = (item) => {
             if (item) {
@@ -413,20 +437,35 @@ export default {
             } else {
                 isEditing.value = false;
                 editingId.value = null;
+                const defaultSub = props.subjects[0] || '通用';
+                const defaultGrade = props.grades[0] || '通用';
                 newItem.value = { 
-                    subject: props.subjects[0] || '数学', grade: props.grades[0] || '', 
+                    subject: defaultSub, 
+                    grade: defaultGrade, 
                     title: '', hints: '', content: '', 
-                    isPinned: false, proficiency: 0, notes: '', reviewCount: 0, reviewSchedule: []
+                    isPinned: false, proficiency: 0, notes: '', reviewCount: 0, reviewSchedule: [],
+                    orderNum: calculateNextOrderNum(defaultSub, defaultGrade) // 自动带出
                 };
             }
             showAddModal.value = true;
         };
 
+        // 当用户在弹窗里切换学科或年级时，重新计算编号
+        const handleSubjectGradeChange = () => {
+            if (!isEditing.value) {
+                newItem.value.orderNum = calculateNextOrderNum(newItem.value.subject, newItem.value.grade);
+            }
+        };
+
         const handleSave = () => {
             if (!newItem.value.title) return alert('请输入核心概念标题');
+            // 确保 orderNum 存为数字
+            newItem.value.orderNum = Number(newItem.value.orderNum) || 0;
             const conceptData = { type: 'feynman', ...newItem.value };
+            
             if (isEditing.value) emit('update-concept', editingId.value, conceptData);
             else emit('add-concept', conceptData);
+            
             showAddModal.value = false;
         };
 
@@ -494,7 +533,6 @@ export default {
             stopSpeech();
         };
 
-        // Excel
         const downloadTemplate = () => window.open('/api/feynman/template');
         const handleFileUpload = async (event) => {
             const file = event.target.files[0];
@@ -510,7 +548,6 @@ export default {
             event.target.value = '';
         };
 
-        // Voice
         const isListening = ref(false);
         let recognition = null;
 
@@ -546,8 +583,8 @@ export default {
         onUnmounted(() => stopSpeech());
 
         return {
-            currentSubject, currentGrade, searchQuery, filteredList, displayList, modeConfig: { subtitle: '以教代学' },
-            showAddModal, isEditing, newItem, openAddModal, handleSave, togglePin,
+            currentSubject, currentGrade, searchQuery, filteredList, displayList,
+            showAddModal, isEditing, newItem, openAddModal, handleSave, togglePin, handleSubjectGradeChange,
             showTestModal, isEbbinghausMode, currentTestList, testItem, userAnswer, isContentBlurred, hoverRating,
             startFeynmanTest, startEbbinghausQuiz, switchTestItem, revealAnswer, rateProficiency, saveNotes, exitTest,
             isListening, toggleSpeech,
