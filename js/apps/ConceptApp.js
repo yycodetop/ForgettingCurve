@@ -1,11 +1,11 @@
 /**
  * js/apps/ConceptApp.js
  * 概念学习通用应用框架
- * 迭代 v3.0: 
- * 1. 状态持久化：切换题目后保留"红/橙"判题颜色
- * 2. 局部修改：仅被修改的错题变回蓝色，其余保持原样
- * 3. 酷炫统计：自定义结果面板，按"空"维度统计正确率
- * 4. 流程优化：支持反复提交判题
+ * 迭代 v3.1: 
+ * 1. 交互革命：移除填空弹窗，改为行内 Input 直接填写
+ * 2. 语音优化：输入框获得焦点时，悬浮显示麦克风按钮
+ * 3. 体验提升：支持回车键(Enter)自动跳转下一个空
+ * 4. 视觉保留：沿用蓝/橙/红的状态颜色系统
  */
 import { ref, computed, nextTick, onUnmounted, watch } from 'vue';
 
@@ -236,7 +236,7 @@ export default {
 
                     <div v-if="mode === 'cloze'" class="max-w-4xl w-full bg-white rounded-3xl shadow-2xl p-12 min-h-[400px] flex flex-col border border-slate-100 relative">
                         <div v-if="!isReviewMode" class="absolute -top-6 left-8 bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg">
-                            <i class="fas fa-highlighter mr-1"></i> 点击下划线填空 · 填写蓝色 · 正确橙色 · 错误红色
+                            <i class="fas fa-keyboard mr-1"></i> 直接填写 · Enter 键跳转 · 焦点下显示语音
                         </div>
                         <div v-if="isReviewMode" class="absolute -top-6 left-8 bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg">
                             <i class="fas fa-book-reader mr-1"></i> 正在复习 · 显示全部内容
@@ -246,19 +246,32 @@ export default {
                             <template v-for="(segment, idx) in parsedClozeContent" :key="idx">
                                 <span v-if="segment.type === 'text'">{{ segment.val }}</span>
                                 
-                                <span v-else 
-                                      @click="!isReviewMode && openAnswerModal(idx)"
-                                      class="inline-block min-w-[60px] px-2 mx-1 transition-all select-none text-center relative group rounded"
-                                      :class="[
-                                        isReviewMode ? 'text-indigo-600 font-bold border-b-2 border-indigo-100 cursor-default' : 
-                                        'border-b-4 cursor-pointer hover:bg-indigo-50 ' + getClozeClass(segment, idx)
-                                      ]"
-                                >
-                                    {{ isReviewMode ? segment.answer : (segment.userVal || '点击作答') }}
-                                    
-                                    <span v-if="!segment.userVal && !isReviewMode" class="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg z-10">
-                                        <i class="fas fa-microphone"></i> 答题
+                                <span v-else class="relative inline-block mx-1 align-bottom">
+                                    <span v-if="isReviewMode" class="text-indigo-600 font-bold border-b-2 border-indigo-100 px-1 select-text cursor-text">
+                                        {{ segment.answer }}
                                     </span>
+
+                                    <input v-else
+                                           type="text"
+                                           v-model="segment.userVal"
+                                           @focus="handleInputFocus(idx, segment)"
+                                           @input="handleInputChange(idx)"
+                                           @keyup.enter="focusNextInput(idx)"
+                                           :id="'cloze-input-' + idx"
+                                           :class="getClozeClass(segment, idx)"
+                                           :style="{ width: Math.max((segment.userVal || segment.answer).length, 4) + 'em' }"
+                                           autocomplete="off"
+                                           class="text-center outline-none border-b-2 bg-transparent transition-all duration-300 py-0.5 rounded-t"
+                                    >
+
+                                    <button v-if="activeInputIndex === idx && !isReviewMode"
+                                            @mousedown.prevent="toggleSpeech(idx)" 
+                                            class="absolute -top-9 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg z-20 transition-all transform animate-pop-in"
+                                            :class="isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 text-white hover:bg-indigo-600 hover:scale-110'"
+                                            title="点击语音输入"
+                                    >
+                                        <i class="fas" :class="isListening ? 'fa-microphone-slash' : 'fa-microphone'"></i>
+                                    </button>
                                 </span>
                             </template>
                         </div>
@@ -319,41 +332,6 @@ export default {
                 </div>
             </div>
         </div>
-
-        <div v-if="showAnswerModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in" @click.self="closeAnswerModal">
-            <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl scale-up flex flex-col overflow-hidden relative">
-                <div class="p-6 bg-slate-50 border-b border-slate-100 text-center relative">
-                    <h3 class="font-bold text-lg text-slate-700">请填空</h3>
-                    <button @click="closeAnswerModal" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-500 transition flex items-center justify-center"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="p-8 flex flex-col items-center gap-8">
-                    <div class="relative group">
-                        <button @click="toggleSpeech" 
-                            class="w-24 h-24 rounded-full flex items-center justify-center text-4xl transition-all duration-300 shadow-xl"
-                            :class="isListening ? 'bg-red-500 text-white shadow-red-300 scale-110 ring-4 ring-red-100' : 'bg-indigo-600 text-white shadow-indigo-300 hover:scale-105 hover:bg-indigo-700'"
-                        >
-                            <i class="fas" :class="isListening ? 'fa-microphone-slash animate-pulse' : 'fa-microphone'"></i>
-                        </button>
-                        <div class="mt-4 text-sm font-bold transition-colors text-center" :class="isListening ? 'text-red-500' : 'text-slate-400'">
-                            {{ isListening ? '正在聆听... (点击停止)' : '点击麦克风说话' }}
-                        </div>
-                    </div>
-                    <div class="w-full space-y-2">
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide text-center">识别结果 (可手动修改)</label>
-                        <div class="relative">
-                            <input ref="answerInputRef" v-model="currentAnswer" @keyup.enter="confirmAnswer" placeholder="等待语音或直接输入..." class="w-full px-4 py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl text-center font-bold text-slate-800 text-xl outline-none focus:border-indigo-500 focus:bg-white transition shadow-inner">
-                            <button v-if="currentAnswer" @click="currentAnswer=''" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 p-2"><i class="fas fa-times-circle"></i></button>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
-                    <button @click="closeAnswerModal" class="flex-1 py-3 text-slate-500 font-bold rounded-xl hover:bg-slate-200 transition">取消</button>
-                    <button @click="confirmAnswer" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" :disabled="!currentAnswer.trim()">
-                        确认填入 <i class="fas fa-check ml-1"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
     `,
     directives: {
@@ -373,18 +351,16 @@ export default {
         const parsedClozeContent = ref([]);
         const isReviewMode = ref(false);
         
-        // --- 核心状态 ---
+        // 核心状态
         const userAnswers = ref({}); // { itemId: { index: 'value' } }
-        const itemGradedStates = ref({}); // { itemId: { index: 'graded' | 'editing' } } -> 记录每个空的判题状态
+        const itemGradedStates = ref({}); // { itemId: { index: 'graded' | 'editing' } }
         
         const isGrading = ref(false);
-        const resultModal = ref({ show: false, total: 0, correct: 0, wrong: 0, score: 0 }); // 结果统计对象
+        const resultModal = ref({ show: false, total: 0, correct: 0, wrong: 0, score: 0 });
         
-        const showAnswerModal = ref(false);
-        const currentAnswer = ref('');
-        const activeClozeIndex = ref(null);
+        // 交互状态
+        const activeInputIndex = ref(null);
         const isListening = ref(false);
-        const answerInputRef = ref(null);
         let recognition = null; 
 
         const modeConfig = computed(() => {
@@ -467,11 +443,9 @@ export default {
             event.target.value = '';
         };
 
-        // --- 核心：背诵流程与状态 ---
+        // --- 核心流程 ---
         const startRecitation = (item) => {
-            // 重置列表状态
             currentReciteList.value.forEach(i => i.status = null);
-            // 重置所有判题状态记录，开始新一轮背诵
             userAnswers.value = {};
             itemGradedStates.value = {};
             
@@ -508,44 +482,50 @@ export default {
             isReviewMode.value = false;
             userAnswers.value = {};
             itemGradedStates.value = {};
+            activeInputIndex.value = null;
             stopSpeech();
         };
 
-        // --- 核心：答题与状态管理 ---
-        const openAnswerModal = (index) => {
-            const existingVal = parsedClozeContent.value[index].userVal;
-            currentAnswer.value = existingVal || '';
-            activeClozeIndex.value = index;
-            isListening.value = false;
-            showAnswerModal.value = true;
-            nextTick(() => { if (answerInputRef.value) answerInputRef.value.focus(); });
+        // --- 核心交互：行内输入与焦点 ---
+        const handleInputFocus = (index, segment) => {
+            activeInputIndex.value = index;
+            // 每次获得焦点，如果是已判题状态，不做改变；
+            // 只有当用户真的输入了内容 (handleInputChange) 才重置为编辑状态
         };
 
-        const closeAnswerModal = () => {
-            stopSpeech();
-            showAnswerModal.value = false;
-            activeClozeIndex.value = null;
+        const handleInputChange = (index) => {
+            if (!currentReciteItem.value) return;
+            const itemId = currentReciteItem.value.id;
+            
+            // 1. 保存答案
+            if (!userAnswers.value[itemId]) userAnswers.value[itemId] = {};
+            userAnswers.value[itemId][index] = parsedClozeContent.value[index].userVal;
+            
+            // 2. 状态重置：只要修改了，就变回编辑状态(蓝色)
+            if (!itemGradedStates.value[itemId]) itemGradedStates.value[itemId] = {};
+            itemGradedStates.value[itemId][index] = 'editing';
         };
 
-        const confirmAnswer = () => {
-            if (activeClozeIndex.value !== null && currentReciteItem.value) {
-                // 更新视图
-                parsedClozeContent.value[activeClozeIndex.value].userVal = currentAnswer.value;
-                
-                // 保存答案
-                const itemId = currentReciteItem.value.id;
-                if (!userAnswers.value[itemId]) userAnswers.value[itemId] = {};
-                userAnswers.value[itemId][activeClozeIndex.value] = currentAnswer.value;
-                
-                // [关键逻辑] 用户修改了答案，将该空的判题状态重置为 "editing" (变回蓝色)
-                // 这样只有修改的空变蓝，其他空保持红/橙
-                if (!itemGradedStates.value[itemId]) itemGradedStates.value[itemId] = {};
-                itemGradedStates.value[itemId][activeClozeIndex.value] = 'editing';
+        const focusNextInput = (currentIndex) => {
+            // 简单的寻找下一个 input 的逻辑
+            // 实际场景中，parsedClozeContent 里可能有很多 text 类型的，需要找到下一个 type='cloze' 的 index
+            // 这里为了简化，直接尝试找 DOM ID
+            // 我们在 template 里加了 id="'cloze-input-' + idx"
+            
+            let nextIndex = currentIndex + 1;
+            while (nextIndex < parsedClozeContent.value.length) {
+                if (parsedClozeContent.value[nextIndex].type === 'cloze') {
+                    const el = document.getElementById('cloze-input-' + nextIndex);
+                    if (el) {
+                        el.focus();
+                        return;
+                    }
+                }
+                nextIndex++;
             }
-            closeAnswerModal();
         };
 
-        // --- 核心：批量判题与统计 ---
+        // --- 核心：判题 ---
         const submitCheck = () => {
             isGrading.value = true;
             setTimeout(() => {
@@ -567,14 +547,11 @@ export default {
                             
                             const standardAns = part.slice(2, -2);
                             const userAns = userAnswers.value[item.id] ? userAnswers.value[item.id][idx] : '';
+                            const isSegmentCorrect = (userAns || '').trim() === standardAns.trim();
                             
-                            // 判题逻辑
-                            const isSegmentCorrect = userAns === standardAns;
-                            
-                            // 更新统计
                             if (isSegmentCorrect) correctBlanks++; else wrongBlanks++;
                             
-                            // 更新每一空的判题状态为 'graded' (锁定颜色)
+                            // 更新状态为已判题
                             if (!itemGradedStates.value[item.id]) itemGradedStates.value[item.id] = {};
                             itemGradedStates.value[item.id][idx] = 'graded';
 
@@ -582,7 +559,6 @@ export default {
                         }
                     });
 
-                    // 更新题目整体状态
                     if (hasCloze) {
                         const newStatus = isItemCorrect ? 'correct' : 'error';
                         item.status = newStatus;
@@ -592,8 +568,6 @@ export default {
                 });
 
                 isGrading.value = false;
-                
-                // 显示自定义结果弹窗
                 resultModal.value = {
                     show: true,
                     total: totalBlanks,
@@ -601,28 +575,35 @@ export default {
                     wrong: wrongBlanks,
                     score: totalBlanks > 0 ? Math.round((correctBlanks / totalBlanks) * 100) : 0
                 };
-                
             }, 1500);
         };
 
-        // --- 核心：样式类逻辑 ---
+        // --- 样式控制 ---
         const getClozeClass = (segment, index) => {
             const itemId = currentReciteItem.value ? currentReciteItem.value.id : null;
-            // 检查当前空的状态：默认为 'editing' (null)
             const state = (itemId && itemGradedStates.value[itemId]) ? itemGradedStates.value[itemId][index] : 'editing';
 
-            // 状态：编辑中 (显示蓝色)
+            // 编辑状态 / 未判题 -> 蓝色
             if (state !== 'graded') {
                 if (segment.userVal) return 'border-blue-400 text-blue-600 font-bold bg-blue-50';
-                return 'border-blue-200 text-transparent';
+                return 'border-blue-200 text-transparent hover:border-blue-300';
             }
             
-            // 状态：已判题 (显示橙/红)
-            if (segment.userVal === segment.answer) return 'border-orange-400 text-orange-500 font-bold bg-orange-50';
+            // 已判题 -> 橙(对)/红(错)
+            if ((segment.userVal || '').trim() === segment.answer.trim()) return 'border-orange-400 text-orange-500 font-bold bg-orange-50';
             return 'border-red-400 text-red-500 font-bold bg-red-50 line-through decoration-red-300';
         };
 
-        const toggleSpeech = () => { if (isListening.value) stopSpeech(); else startSpeech(); };
+        // --- 语音逻辑 ---
+        const toggleSpeech = (index) => {
+            if (isListening.value) {
+                stopSpeech();
+            } else {
+                activeInputIndex.value = index; // 确保激活的是点的那个
+                startSpeech();
+            }
+        };
+
         const startSpeech = () => {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) return alert("您的浏览器不支持语音识别。");
@@ -635,7 +616,14 @@ export default {
             recognition.onresult = (event) => {
                 let text = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) text += event.results[i][0].transcript;
-                if (text) currentAnswer.value = text.replace(/[。.,，?？]$/, '');
+                if (text) {
+                    const cleanText = text.replace(/[。.,，?？]$/, '');
+                    // 直接写入 input model
+                    if (activeInputIndex.value !== null) {
+                        parsedClozeContent.value[activeInputIndex.value].userVal = cleanText;
+                        handleInputChange(activeInputIndex.value); // 触发保存和状态变更
+                    }
+                }
             };
             recognition.start();
         };
@@ -658,8 +646,11 @@ export default {
             startRecitation, exitRecitation, switchReciteItem, currentReciteList, 
             getClozeClass, getListTitleClass,
             
-            showAnswerModal, currentAnswer, isListening, answerInputRef,
-            openAnswerModal, closeAnswerModal, toggleSpeech, confirmAnswer,
+            // 交互相关
+            handleInputFocus, handleInputChange, focusNextInput, activeInputIndex,
+            
+            // 语音
+            toggleSpeech, isListening,
             
             downloadTemplate, handleFileUpload,
             submitCheck, isGrading, resultModal
