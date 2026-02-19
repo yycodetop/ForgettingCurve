@@ -11,12 +11,14 @@ import { useVocabulary } from './composables/useVocabulary.js';
 import { usePomodoro } from './composables/usePomodoro.js';
 import { useConcepts } from './composables/useConcepts.js';
 import { useFeynman } from './composables/useFeynman.js'; // [新增]
+import { useImageOcclusion } from './composables/useImageOcclusion.js'; // [新增]
 
 // 导入组件
 import DashboardApp from './apps/DashboardApp.js';
 import EnglishApp from './apps/EnglishApp.js';
 import ConceptApp from './apps/ConceptApp.js';
 import FeynmanApp from './apps/FeynmanApp.js';
+import ImageOcclusionApp from './apps/ImageOcclusionApp.js'; // [新增]
 import TheDock from './components/TheDock.js';
 
 const app = createApp({
@@ -36,6 +38,7 @@ const app = createApp({
                 <span v-else-if="currentApp === 'english'">🔤 英语工作室</span>
                 <span v-else-if="['cloze', 'image'].includes(currentApp)">🧠 概念实验室</span>
                 <span v-else-if="currentApp === 'feynman'">🎓 费曼自测</span>
+                <span v-else-if="currentApp === 'occlusion'">🖼️ 图像遮挡</span>
             </div>
             <div v-if="currentApp === 'dashboard'" class="flex items-center bg-slate-200/50 rounded-full p-1 text-sm">
                 <button @click="changeMonth(-1)" class="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center text-slate-500 transition">←</button>
@@ -223,6 +226,7 @@ const app = createApp({
         const pomodoroModule = usePomodoro();
         const conceptModule = useConcepts(API_BASE);
         const feynmanModule = useFeynman(API_BASE); // [新增] 初始化费曼模块
+        const occlusionModule = useImageOcclusion(API_BASE); // [新增]
 
         const currentApp = ref('dashboard');
         const recitationData = ref([]); 
@@ -247,7 +251,8 @@ const app = createApp({
                 taskModule.loadTasks(), 
                 vocabModule.loadBooks(),
                 conceptModule.loadConcepts(),
-                feynmanModule.loadFeynman() // [新增] 加载费曼数据
+                feynmanModule.loadFeynman(),// [新增] 加载费曼数据
+                occlusionModule.loadOcclusion() // [新增] 加载数据
             ]);
         });
 
@@ -302,6 +307,7 @@ const app = createApp({
             ...pomodoroModule,
             ...conceptModule, 
             ...feynmanModule, // [新增] 暴露费曼模块方法
+            ...occlusionModule, // [新增] 暴露图像遮挡模块方法
             
             handleAddWord,
             handleRecitationRequest,
