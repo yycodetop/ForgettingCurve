@@ -17,6 +17,7 @@ app.use('/api/data', require('./routes/tasks'));
 app.use('/api/vocabulary', require('./routes/vocabulary'));
 // [新增] 注册概念知识库路由
 app.use('/api/concepts', require('./routes/concepts')); 
+app.use('/api/feynman', require('./routes/feynman')); // [新增] 费曼路由
 
 app.listen(PORT, () => {
     console.log(`Memory OS running at http://localhost:${PORT}`);

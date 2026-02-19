@@ -1,20 +1,22 @@
 /**
  * js/main.js
- * 应用主入口 - 迭代版 v2.1
- * 修复：监听 ConceptApp 的 refresh 事件，实现 Excel 导入后自动刷新数据
+ * 应用主入口 - 迭代版 v3.1
+ * 变更：集成独立的 Feynman 数据源和逻辑
  */
 import { createApp, ref, computed, onMounted } from 'vue';
 
-// 导入核心逻辑 Composable
+// 导入业务模块
 import { useTasks } from './composables/useTasks.js';
 import { useVocabulary } from './composables/useVocabulary.js';
 import { usePomodoro } from './composables/usePomodoro.js';
 import { useConcepts } from './composables/useConcepts.js';
+import { useFeynman } from './composables/useFeynman.js'; // [新增]
 
-// 导入应用组件
+// 导入组件
 import DashboardApp from './apps/DashboardApp.js';
 import EnglishApp from './apps/EnglishApp.js';
 import ConceptApp from './apps/ConceptApp.js';
+import FeynmanApp from './apps/FeynmanApp.js';
 import TheDock from './components/TheDock.js';
 
 const app = createApp({
@@ -22,6 +24,7 @@ const app = createApp({
         DashboardApp, 
         EnglishApp, 
         ConceptApp, 
+        FeynmanApp, 
         TheDock 
     },
     template: `
@@ -31,7 +34,8 @@ const app = createApp({
             <div class="font-bold text-xl flex items-center gap-2">
                 <span v-if="currentApp === 'dashboard'">👋 综合概览</span>
                 <span v-else-if="currentApp === 'english'">🔤 英语工作室</span>
-                <span v-else-if="['cloze', 'image', 'feynman'].includes(currentApp)">🧠 概念实验室</span>
+                <span v-else-if="['cloze', 'image'].includes(currentApp)">🧠 概念实验室</span>
+                <span v-else-if="currentApp === 'feynman'">🎓 费曼自测</span>
             </div>
             <div v-if="currentApp === 'dashboard'" class="flex items-center bg-slate-200/50 rounded-full p-1 text-sm">
                 <button @click="changeMonth(-1)" class="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center text-slate-500 transition">←</button>
@@ -85,7 +89,7 @@ const app = createApp({
                 @download="downloadTemplate"
             ></english-app>
 
-            <concept-app v-if="['cloze', 'image', 'feynman'].includes(currentApp)"
+            <concept-app v-if="['cloze', 'image'].includes(currentApp)"
                 :mode="currentApp"
                 :concepts="getConceptsByType(currentApp)"
                 :subjects="categories"
@@ -97,6 +101,16 @@ const app = createApp({
                 @refresh="loadConcepts"
                 @back-home="currentApp = 'dashboard'"
             ></concept-app>
+
+            <feynman-app v-if="currentApp === 'feynman'"
+                :concepts="feynmanList"
+                :subjects="categories"
+                :grades="grades"
+                @add-concept="addFeynman"
+                @update-concept="updateFeynman"
+                @delete-concept="deleteFeynman"
+                @back-home="currentApp = 'dashboard'"
+            ></feynman-app>
 
         </main>
 
@@ -208,15 +222,12 @@ const app = createApp({
         const vocabModule = useVocabulary(API_BASE);
         const pomodoroModule = usePomodoro();
         const conceptModule = useConcepts(API_BASE);
+        const feynmanModule = useFeynman(API_BASE); // [新增] 初始化费曼模块
 
-        // --- 全局状态 ---
         const currentApp = ref('dashboard');
         const recitationData = ref([]); 
-        
-        // 概念模块初始动作状态（用于快速新建）
         const conceptInitialAction = ref(null);
         
-        // --- 计算属性 ---
         const englishTasks = computed(() => {
             const now = new Date().toISOString().split('T')[0];
             if (!taskModule.tasks.value) return [];
@@ -231,16 +242,14 @@ const app = createApp({
                 .slice(0, 10);
         });
 
-        // --- 生命周期 ---
         onMounted(async () => {
             await Promise.all([
                 taskModule.loadTasks(), 
                 vocabModule.loadBooks(),
-                conceptModule.loadConcepts()
+                conceptModule.loadConcepts(),
+                feynmanModule.loadFeynman() // [新增] 加载费曼数据
             ]);
         });
-
-        // --- 事件处理函数 ---
 
         const handleAddWord = async (wordObj) => {
             vocabModule.newWord.value = wordObj; 
@@ -256,14 +265,10 @@ const app = createApp({
             taskModule.postponeTask(taskId, stage, days);
         };
 
-        // 注意：新版 ConceptApp 内部直接处理上传并触发 refresh 事件，
-        // 这里的 handleConceptImport 可能不再被 ConceptApp 的 Excel 按钮使用，
-        // 但保留以兼容其他可能的调用方式。
         const handleConceptImport = async (file) => {
             try {
                 const result = await conceptModule.importConceptsFromExcel(file, 'cloze');
                 alert(`导入完成！\n成功: ${result.success} 条\n跳过: ${result.skipped} 条 (格式错误或缺少数据)`);
-                // 手动触发刷新
                 await conceptModule.loadConcepts();
             } catch (e) {
                 console.error(e);
@@ -277,6 +282,7 @@ const app = createApp({
             setTimeout(() => { conceptInitialAction.value = null; }, 500);
         };
         
+        // 此函数用于 Dashboard 快速添加，暂定添加为 Cloze
         const handleDashboardAddConcept = (newConcept) => {
             conceptModule.addConcept(newConcept);
         };
@@ -295,6 +301,7 @@ const app = createApp({
             ...vocabModule,
             ...pomodoroModule,
             ...conceptModule, 
+            ...feynmanModule, // [新增] 暴露费曼模块方法
             
             handleAddWord,
             handleRecitationRequest,
