@@ -1,8 +1,13 @@
 /**
  * js/apps/ImageOcclusionApp.js
- * 图像遮挡独立模块 - v2.1 (修复上传与拖拽遮挡体验)
+ * 图像遮挡独立模块 - v2.2 (迭代版)
+ * 更新内容：
+ * 1. 卡片图片改为等比缩放(object-contain)，显示全貌
+ * 2. 增加自测模式下的左右切换功能（支持键盘左右键）
+ * 3. 增加标题模糊搜索功能
+ * 4. 支持卡片置顶(Pinned)和加入遗忘曲线(inCurve)标记
  */
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
 export default {
     props: ['subjects', 'grades', 'occlusions'],
@@ -61,9 +66,17 @@ export default {
                         <p class="text-xs text-slate-400 font-medium">Image Occlusion Testing</p>
                     </div>
                 </div>
-                <button @click="openEditor(null)" class="px-5 py-2.5 rounded-2xl font-bold text-white shadow-lg bg-pink-500 hover:bg-pink-600 shadow-pink-200 transition transform active:scale-95 flex items-center gap-2 text-sm">
-                    <i class="fas fa-plus"></i> 新建遮挡卡片
-                </button>
+                
+                <div class="flex items-center gap-4">
+                    <div class="relative w-64 group">
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-pink-500 transition"></i>
+                        <input v-model="searchQuery" type="text" placeholder="搜索卡片标题..." class="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-2xl pl-10 pr-4 py-2.5 font-bold focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 transition shadow-sm">
+                    </div>
+
+                    <button @click="openEditor(null)" class="px-5 py-2.5 rounded-2xl font-bold text-white shadow-lg bg-pink-500 hover:bg-pink-600 shadow-pink-200 transition transform active:scale-95 flex items-center gap-2 text-sm">
+                        <i class="fas fa-plus"></i> 新建遮挡卡片
+                    </button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto custom-scrollbar p-2">
@@ -71,16 +84,30 @@ export default {
                     <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
                         <i class="fas fa-image text-4xl opacity-50"></i>
                     </div>
-                    <p class="font-bold text-lg">暂无图片卡片</p>
+                    <p class="font-bold text-lg">暂无匹配的图片卡片</p>
                 </div>
 
-                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 pb-24">
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-24">
                     <div v-for="item in filteredList" :key="item.id" 
                          class="group relative bg-white rounded-[1.5rem] p-4 transition-all duration-300 flex flex-col h-[280px] overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:border-pink-200 hover:-translate-y-1"
                     >
-                        <div class="h-36 rounded-xl bg-slate-100 relative overflow-hidden mb-4 border border-slate-100">
-                            <img :src="item.imageUrl" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity">
-                            <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm">
+                        <div class="absolute top-6 left-6 flex gap-1 z-20">
+                            <span v-if="item.pinned" class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md" title="已置顶"><i class="fas fa-thumbtack text-[10px]"></i></span>
+                            <span v-if="item.inCurve" class="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md" title="已加入遗忘曲线"><i class="fas fa-chart-line text-[10px]"></i></span>
+                        </div>
+
+                        <div class="absolute top-6 right-6 flex flex-col gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button @click="togglePin(item)" class="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-sm transition transform hover:scale-110" :class="item.pinned ? 'bg-amber-500 text-white' : 'bg-white/90 text-slate-400 hover:text-amber-500'" title="置顶">
+                                <i class="fas fa-thumbtack text-xs"></i>
+                            </button>
+                            <button @click="toggleCurve(item)" class="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-sm transition transform hover:scale-110" :class="item.inCurve ? 'bg-indigo-500 text-white' : 'bg-white/90 text-slate-400 hover:text-indigo-500'" title="加入遗忘曲线">
+                                <i class="fas fa-chart-line text-xs"></i>
+                            </button>
+                        </div>
+
+                        <div class="h-36 rounded-xl bg-slate-800 relative overflow-hidden mb-4 border border-slate-100 flex items-center justify-center">
+                            <img :src="item.imageUrl" class="max-w-full max-h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity">
+                            <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm z-10">
                                 {{ item.masks.length }} 个遮挡点
                             </div>
                         </div>
@@ -90,7 +117,7 @@ export default {
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-50 text-slate-500 border-slate-100">{{ item.subject }}</span>
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-50 text-slate-500 border-slate-200">{{ item.grade }}</span>
                             </div>
-                            <h4 class="font-bold text-slate-800 text-lg line-clamp-1 mb-1">{{ item.title }}</h4>
+                            <h4 class="font-bold text-slate-800 text-lg line-clamp-1 mb-1" :title="item.title">{{ item.title }}</h4>
                         </div>
 
                         <div class="mt-2 pt-3 border-t border-slate-50 flex justify-between items-center">
@@ -141,8 +168,8 @@ export default {
                     </label>
                     
                     <div v-else class="space-y-4">
-                        <div class="h-32 rounded-xl bg-slate-900 relative overflow-hidden border border-slate-700 group">
-                            <img :src="imgPreview" class="w-full h-full object-contain">
+                        <div class="h-32 rounded-xl bg-slate-900 relative overflow-hidden border border-slate-700 group flex items-center justify-center">
+                            <img :src="imgPreview" class="max-w-full max-h-full object-contain">
                             <label v-if="!isEditing" class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer text-sm font-bold">
                                 <i class="fas fa-sync-alt mb-1"></i>重新选择
                                 <input type="file" accept="image/*" class="hidden" @change="handleImageSelect">
@@ -169,63 +196,30 @@ export default {
                                 </select>
                             </div>
                         </div>
-                        <div class="pt-4 text-xs text-slate-500 leading-relaxed bg-slate-900/50 p-3 rounded-xl border border-slate-700">
-                            <p class="font-bold mb-1 text-slate-400"><i class="fas fa-mouse-pointer mr-1"></i> 操作提示:</p>
-                            <ul class="list-disc pl-4 space-y-1">
-                                <li>在右侧图片上 <span class="text-slate-300">按住鼠标左键并拖动</span>，即可绘制遮挡框覆盖关键文字。</li>
-                                <li>点击已有的 <span class="text-red-400">红色遮挡框</span> 可以将其删除。</li>
-                            </ul>
-                        </div>
                     </div>
                 </div>
 
-                <div class="flex-1 bg-slate-950 relative overflow-hidden flex items-center justify-center p-8 select-none"
-                     @mouseup="endDraw" 
-                     @mouseleave="endDraw"
-                >
-                    <div v-if="imgPreview" 
-                         class="relative inline-block shadow-2xl rounded-lg overflow-hidden cursor-crosshair"
-                         @mousedown="startDraw"
-                         @mousemove="drawing"
-                         ref="imageContainer"
-                    >
+                <div class="flex-1 bg-slate-950 relative overflow-hidden flex items-center justify-center p-8 select-none" @mouseup="endDraw" @mouseleave="endDraw">
+                    <div v-if="imgPreview" class="relative inline-block shadow-2xl rounded-lg overflow-hidden cursor-crosshair" @mousedown="startDraw" @mousemove="drawing" ref="imageContainer">
                         <img :src="imgPreview" class="max-h-[80vh] max-w-full block select-none pointer-events-none" draggable="false">
                         
-                        <div v-for="(mask, idx) in currentMasks" :key="idx"
-                             class="absolute bg-orange-500/60 border border-orange-300 hover:bg-red-500/80 hover:border-red-300 transition cursor-pointer flex items-center justify-center shadow-sm group z-10"
-                             :style="{ left: mask.x + '%', top: mask.y + '%', width: mask.w + '%', height: mask.h + '%' }"
-                             @click.stop="removeMask(idx)"
-                             @mousedown.stop
-                        >
+                        <div v-for="(mask, idx) in currentMasks" :key="idx" class="absolute bg-orange-500/60 border border-orange-300 hover:bg-red-500/80 hover:border-red-300 transition cursor-pointer flex items-center justify-center shadow-sm group z-10" :style="{ left: mask.x + '%', top: mask.y + '%', width: mask.w + '%', height: mask.h + '%' }" @click.stop="removeMask(idx)" @mousedown.stop>
                             <i class="fas fa-times text-white text-[10px] opacity-0 group-hover:opacity-100"></i>
                         </div>
 
-                        <div v-if="activeDrawingMask"
-                             class="absolute bg-blue-500/40 border border-blue-300 z-20 pointer-events-none"
-                             :style="{ left: activeDrawingMask.x + '%', top: activeDrawingMask.y + '%', width: activeDrawingMask.w + '%', height: activeDrawingMask.h + '%' }"
-                        ></div>
-                        
-                        <div v-if="currentMasks.length === 0 && !activeDrawingMask" class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div class="bg-black/50 text-white px-5 py-3 rounded-full backdrop-blur-md text-sm border border-white/20 shadow-2xl animate-pulse">
-                                🖱️ 在这里按住并拖动鼠标，遮住你想考察的部位
-                            </div>
-                        </div>
-                    </div>
-                    <div v-else class="text-slate-600 font-bold text-xl flex flex-col items-center gap-4">
-                        <i class="fas fa-image text-5xl opacity-30"></i>
-                        <p>请先在左侧上传需要学习的图片</p>
+                        <div v-if="activeDrawingMask" class="absolute bg-blue-500/40 border border-blue-300 z-20 pointer-events-none" :style="{ left: activeDrawingMask.x + '%', top: activeDrawingMask.y + '%', width: activeDrawingMask.w + '%', height: activeDrawingMask.h + '%' }"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div v-if="showTestModal" class="fixed inset-0 bg-slate-950 z-[90] flex flex-col animate-fade-in">
+        <div v-if="showTestModal" class="fixed inset-0 bg-slate-950 z-[90] flex flex-col animate-fade-in" tabindex="0" ref="testModalWrapper">
             <div class="h-16 px-8 border-b border-white/10 flex justify-between items-center bg-slate-900 shrink-0 text-white">
                 <div class="flex items-center gap-4">
-                    <button @click="showTestModal=false" class="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+                    <button @click="closeTestModal" class="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
                     <div>
                         <h2 class="font-bold text-lg">{{ testItem.title }}</h2>
-                        <span class="text-xs text-slate-400">点击橙色块揭晓答案，再次点击隐藏</span>
+                        <span class="text-xs text-slate-400">点击橙色块揭晓答案，再次点击隐藏 | 支持键盘 ← / → 切换</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -235,8 +229,12 @@ export default {
             </div>
 
             <div class="flex-1 overflow-auto flex items-center justify-center p-8 bg-slate-950 relative">
+                <button v-if="hasPrevTest" @click="navTest(-1)" class="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center text-white text-2xl backdrop-blur-md transition-all hover:scale-110 z-50">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+
                 <div class="relative inline-block shadow-2xl rounded-lg overflow-hidden select-none">
-                    <img :src="testItem.imageUrl" class="max-h-[85vh] max-w-full block" draggable="false">
+                    <img :src="testItem.imageUrl" class="max-h-[80vh] max-w-full block" draggable="false">
                     
                     <div v-for="(mask, idx) in testMasksStatus" :key="idx"
                          class="absolute border transition-all duration-300 cursor-pointer shadow-sm"
@@ -246,6 +244,10 @@ export default {
                     >
                     </div>
                 </div>
+
+                <button v-if="hasNextTest" @click="navTest(1)" class="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center text-white text-2xl backdrop-blur-md transition-all hover:scale-110 z-50">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
 
             <div class="h-20 border-t border-white/10 bg-slate-900 flex items-center justify-center gap-6 shrink-0">
@@ -268,13 +270,38 @@ export default {
     setup(props, { emit }) {
         const currentSubject = ref('all');
         const currentGrade = ref('all');
+        const searchQuery = ref(''); // 搜索关键字
         
+        // 核心过滤与排序逻辑
         const filteredList = computed(() => {
             let list = [...props.occlusions];
+            
+            // 1. 学科 & 年级过滤
             if (currentSubject.value !== 'all') list = list.filter(c => c.subject === currentSubject.value);
             if (currentGrade.value !== 'all') list = list.filter(c => c.grade === currentGrade.value);
-            return list.reverse();
+            
+            // 2. 模糊搜索
+            if (searchQuery.value.trim()) {
+                const keyword = searchQuery.value.toLowerCase();
+                list = list.filter(c => c.title.toLowerCase().includes(keyword));
+            }
+
+            // 3. 排序：置顶(pinned)优先，其次按ID倒序(最新创建的在前)
+            return list.sort((a, b) => {
+                if (a.pinned && !b.pinned) return -1;
+                if (!a.pinned && b.pinned) return 1;
+                return b.id - a.id;
+            });
         });
+
+        // --- 卡片快捷操作 ---
+        const togglePin = (item) => {
+            emit('update-occlusion', item.id, { pinned: !item.pinned });
+        };
+
+        const toggleCurve = (item) => {
+            emit('update-occlusion', item.id, { inCurve: !item.inCurve });
+        };
 
         // --- 编辑逻辑 ---
         const showEditor = ref(false);
@@ -283,10 +310,8 @@ export default {
         const imageFile = ref(null);
         const imageContainer = ref(null);
         const currentMasks = ref([]); 
-        
         const form = ref({ id: null, title: '', subject: '', grade: '' });
 
-        // 绘图相关状态
         const isDrawing = ref(false);
         const drawStartPos = ref({ x: 0, y: 0 });
         const activeDrawingMask = ref(null);
@@ -313,48 +338,38 @@ export default {
         const handleImageSelect = (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            
-            // 简单校验是否为图片
-            if (!file.type.startsWith('image/')) {
-                alert('请选择一张图片文件！');
-                return;
-            }
+            if (!file.type.startsWith('image/')) return alert('请选择一张图片文件！');
 
             imageFile.value = file;
             const reader = new FileReader();
             reader.onload = (event) => {
                 imgPreview.value = event.target.result;
-                e.target.value = ''; // 重置 input 以允许重复选择同一文件
+                e.target.value = ''; 
             };
             reader.readAsDataURL(file);
         };
 
-        // --- 核心：拖拽画框逻辑 ---
         const startDraw = (e) => {
             if (!imageContainer.value) return;
             e.preventDefault();
             isDrawing.value = true;
-            
             drawStartPos.value = { x: e.clientX, y: e.clientY };
             
             const rect = imageContainer.value.getBoundingClientRect();
-            const startXRel = ((e.clientX - rect.left) / rect.width) * 100;
-            const startYRel = ((e.clientY - rect.top) / rect.height) * 100;
-            
-            activeDrawingMask.value = { x: startXRel, y: startYRel, w: 0, h: 0 };
+            activeDrawingMask.value = { 
+                x: ((e.clientX - rect.left) / rect.width) * 100, 
+                y: ((e.clientY - rect.top) / rect.height) * 100, 
+                w: 0, h: 0 
+            };
         };
 
         const drawing = (e) => {
             if (!isDrawing.value || !activeDrawingMask.value || !imageContainer.value) return;
-            
             const rect = imageContainer.value.getBoundingClientRect();
-            const currentX = e.clientX;
-            const currentY = e.clientY;
-
-            const minX = Math.min(drawStartPos.value.x, currentX) - rect.left;
-            const minY = Math.min(drawStartPos.value.y, currentY) - rect.top;
-            const width = Math.abs(currentX - drawStartPos.value.x);
-            const height = Math.abs(currentY - drawStartPos.value.y);
+            const minX = Math.min(drawStartPos.value.x, e.clientX) - rect.left;
+            const minY = Math.min(drawStartPos.value.y, e.clientY) - rect.top;
+            const width = Math.abs(e.clientX - drawStartPos.value.x);
+            const height = Math.abs(e.clientY - drawStartPos.value.y);
 
             activeDrawingMask.value = {
                 x: (minX / rect.width) * 100,
@@ -367,9 +382,7 @@ export default {
         const endDraw = () => {
             if (!isDrawing.value) return;
             isDrawing.value = false;
-            
             if (activeDrawingMask.value) {
-                // 过滤掉太小的误触框 (宽高小于 0.5% 的丢弃)
                 if (activeDrawingMask.value.w > 0.5 && activeDrawingMask.value.h > 0.5) {
                     currentMasks.value.push({ ...activeDrawingMask.value });
                 }
@@ -377,19 +390,11 @@ export default {
             }
         };
 
-        const removeMask = (idx) => {
-            currentMasks.value.splice(idx, 1);
-        };
+        const removeMask = (idx) => currentMasks.value.splice(idx, 1);
 
         const saveItem = () => {
-            if (!imgPreview.value) {
-                alert('请先上传图片底图！');
-                return;
-            }
-            if (!form.value.title.trim()) {
-                alert('请输入卡片标题！');
-                return;
-            }
+            if (!imgPreview.value) return alert('请先上传图片底图！');
+            if (!form.value.title.trim()) return alert('请输入卡片标题！');
 
             const formData = new FormData();
             formData.append('subject', form.value.subject);
@@ -397,47 +402,64 @@ export default {
             formData.append('title', form.value.title);
             formData.append('masks', JSON.stringify(currentMasks.value));
             
-            if (imageFile.value) {
-                formData.append('imageFile', imageFile.value);
-            } else {
-                formData.append('imageUrl', imgPreview.value);
-            }
+            if (imageFile.value) formData.append('imageFile', imageFile.value);
+            else formData.append('imageUrl', imgPreview.value);
 
             if (isEditing.value) {
-                const updateData = {
-                    title: form.value.title,
-                    subject: form.value.subject,
-                    grade: form.value.grade,
-                    masks: currentMasks.value
-                };
-                emit('update-occlusion', form.value.id, updateData);
+                emit('update-occlusion', form.value.id, {
+                    title: form.value.title, subject: form.value.subject, grade: form.value.grade, masks: currentMasks.value
+                });
             } else {
                 emit('add-occlusion', formData);
             }
             showEditor.value = false;
         };
 
-        // --- 自测逻辑 ---
+        // --- 自测与切换逻辑 ---
         const showTestModal = ref(false);
         const testItem = ref({});
         const testMasksStatus = ref([]); 
 
+        // 当前题目在列表中的索引
+        const currentTestIndex = computed(() => filteredList.value.findIndex(item => item.id === testItem.value.id));
+        const hasPrevTest = computed(() => currentTestIndex.value > 0);
+        const hasNextTest = computed(() => currentTestIndex.value < filteredList.value.length - 1);
+
         const startTest = (item) => {
             testItem.value = item;
-            testMasksStatus.value = item.masks.map(m => ({
-                data: m,
-                visible: true 
-            }));
+            testMasksStatus.value = item.masks.map(m => ({ data: m, visible: true }));
             showTestModal.value = true;
         };
 
-        const toggleMask = (idx) => {
-            testMasksStatus.value[idx].visible = !testMasksStatus.value[idx].visible;
+        const navTest = (offset) => {
+            const newIndex = currentTestIndex.value + offset;
+            if (newIndex >= 0 && newIndex < filteredList.value.length) {
+                startTest(filteredList.value[newIndex]);
+            }
         };
 
-        const toggleAllMasks = (visible) => {
-            testMasksStatus.value.forEach(m => m.visible = visible);
+        const closeTestModal = () => showTestModal.value = false;
+
+        // 全局键盘监听，用于左右箭头切换
+        const handleKeydown = (e) => {
+            if (!showTestModal.value) return;
+            if (e.key === 'ArrowLeft' && hasPrevTest.value) {
+                navTest(-1);
+            } else if (e.key === 'ArrowRight' && hasNextTest.value) {
+                navTest(1);
+            }
         };
+
+        onMounted(() => {
+            window.addEventListener('keydown', handleKeydown);
+        });
+
+        onUnmounted(() => {
+            window.removeEventListener('keydown', handleKeydown);
+        });
+
+        const toggleMask = (idx) => testMasksStatus.value[idx].visible = !testMasksStatus.value[idx].visible;
+        const toggleAllMasks = (visible) => testMasksStatus.value.forEach(m => m.visible = visible);
 
         const rateProficiency = (score) => {
             emit('update-occlusion', testItem.value.id, { 
@@ -446,16 +468,23 @@ export default {
                 lastReview: new Date().toISOString()
             });
             testItem.value.proficiency = score;
+            
+            // 评星后如果还有下一题，稍微延迟自动跳到下一题 (提升流畅度)
+            if (hasNextTest.value) {
+                setTimeout(() => navTest(1), 300);
+            }
         };
 
         return {
-            currentSubject, currentGrade, filteredList,
+            currentSubject, currentGrade, searchQuery, filteredList,
             showEditor, isEditing, form, imgPreview, imageContainer, currentMasks,
             openEditor, handleImageSelect, removeMask, saveItem,
+            togglePin, toggleCurve,
             
             startDraw, drawing, endDraw, activeDrawingMask,
 
             showTestModal, testItem, testMasksStatus,
+            hasPrevTest, hasNextTest, navTest, closeTestModal,
             startTest, toggleMask, toggleAllMasks, rateProficiency
         };
     }

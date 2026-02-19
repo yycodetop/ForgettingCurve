@@ -1,7 +1,7 @@
 /**
  * js/main.js
- * 应用主入口 - 迭代版 v3.2
- * 修复：正确注册并挂载 ImageOcclusionApp (图像遮挡组件)
+ * 应用主入口 - 迭代版 v3.3
+ * 修复：解决首页(Dashboard)图片遮挡快捷入口点击无效的问题 (指令重定向)
  */
 import { createApp, ref, computed, onMounted } from 'vue';
 
@@ -18,7 +18,7 @@ import DashboardApp from './apps/DashboardApp.js';
 import EnglishApp from './apps/EnglishApp.js';
 import ConceptApp from './apps/ConceptApp.js';
 import FeynmanApp from './apps/FeynmanApp.js';
-import ImageOcclusionApp from './apps/ImageOcclusionApp.js'; // 已引入
+import ImageOcclusionApp from './apps/ImageOcclusionApp.js'; 
 import TheDock from './components/TheDock.js';
 
 const app = createApp({
@@ -27,7 +27,7 @@ const app = createApp({
         EnglishApp, 
         ConceptApp, 
         FeynmanApp, 
-        ImageOcclusionApp, // 修复1：必须在这里注册组件
+        ImageOcclusionApp, 
         TheDock 
     },
     template: `
@@ -35,11 +35,11 @@ const app = createApp({
         
         <header class="h-16 px-8 flex justify-between items-center bg-white/60 backdrop-blur-md border-b border-white/50 z-20">
             <div class="font-bold text-xl flex items-center gap-2">
-                <span v-if="currentApp === 'dashboard'">👋 综合概览</span>
-                <span v-else-if="currentApp === 'english'">🔤 英语工作室</span>
-                <span v-else-if="currentApp === 'cloze'">🧠 概念实验室</span> 
-                <span v-else-if="currentApp === 'feynman'">🎓 费曼自测</span>
-                <span v-else-if="currentApp === 'occlusion'">🖼️ 图像遮挡</span>
+                <span v-if="currentApp === 'dashboard'">综合概览</span>
+                <span v-else-if="currentApp === 'english'"> 英语工作室</span>
+                <span v-else-if="currentApp === 'cloze'"> 概念实验室</span> 
+                <span v-else-if="currentApp === 'feynman'"> 费曼自测</span>
+                <span v-else-if="currentApp === 'occlusion'"> 图像遮挡</span>
             </div>
             <div v-if="currentApp === 'dashboard'" class="flex items-center bg-slate-200/50 rounded-full p-1 text-sm">
                 <button @click="changeMonth(-1)" class="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center text-slate-500 transition">←</button>
@@ -52,7 +52,10 @@ const app = createApp({
             
             <dashboard-app v-if="currentApp === 'dashboard'"
                 :calendar-days="calendarDays" :current-day-tasks="currentDayTasks" :all-tasks="tasks" :selected-date="selectedDate" :start-day-of-week="startDayOfWeek" :categories="categories" :chart-data="chartData" :grades="grades" 
-                @select-date="selectDate" @open-pomodoro="openPomodoroModal" @open-rate="openRateModal" @edit-task="openEditTaskModal" @delete-task="deleteTask" @add-category="addCategory" @delete-category="deleteCategory" @postpone-task="handlePostponeTask" @switch-app="(id) => currentApp = id" @quick-add-concept="handleQuickAddConcept" @add-concept="handleDashboardAddConcept"
+                @select-date="selectDate" @open-pomodoro="openPomodoroModal" @open-rate="openRateModal" @edit-task="openEditTaskModal" @delete-task="deleteTask" @add-category="addCategory" @delete-category="deleteCategory" @postpone-task="handlePostponeTask" 
+                @switch-app="handleSwitchApp" 
+                @quick-add-concept="handleQuickAddConcept" 
+                @add-concept="handleDashboardAddConcept"
             ></dashboard-app>
 
             <english-app v-if="currentApp === 'english'"
@@ -62,12 +65,12 @@ const app = createApp({
 
             <concept-app v-if="currentApp === 'cloze'"
                 :mode="currentApp" :concepts="getConceptsByType(currentApp)" :subjects="categories" :grades="grades" :initial-action="conceptInitialAction"  
-                @add-concept="addConcept" @update-concept="handleUpdateConcept" @delete-concept="deleteConcept" @refresh="loadConcepts" @back-home="currentApp = 'dashboard'"
+                @add-concept="addConcept" @update-concept="handleUpdateConcept" @delete-concept="deleteConcept" @refresh="loadConcepts" @back-home="handleSwitchApp('dashboard')"
             ></concept-app>
 
             <feynman-app v-if="currentApp === 'feynman'"
                 :concepts="feynmanList" :subjects="categories" :grades="grades" 
-                @add-concept="addFeynman" @update-concept="updateFeynman" @delete-concept="deleteFeynman" @back-home="currentApp = 'dashboard'"
+                @add-concept="addFeynman" @update-concept="updateFeynman" @delete-concept="deleteFeynman" @back-home="handleSwitchApp('dashboard')"
             ></feynman-app>
 
             <image-occlusion-app v-if="currentApp === 'occlusion'"
@@ -77,14 +80,14 @@ const app = createApp({
                 @add-occlusion="addOcclusion"
                 @update-occlusion="updateOcclusion"
                 @delete-occlusion="deleteOcclusion"
-                @back-home="currentApp = 'dashboard'"
+                @back-home="handleSwitchApp('dashboard')"
             ></image-occlusion-app>
 
         </main>
 
         <the-dock 
             :current-app="currentApp" 
-            @switch-app="(id) => currentApp = id"
+            @switch-app="handleSwitchApp"
             @add-task="openAddTaskModal"
             @open-pomodoro="openPomodoroModal(null)"
         ></the-dock>
@@ -221,6 +224,25 @@ const app = createApp({
             ]);
         });
 
+        // ==========================================
+        // 核心修复：添加指令拦截器，统一处理应用切换
+        // ==========================================
+        const handleSwitchApp = (id) => {
+            // 兼容首页或旧代码可能传来的 'image' 指令，自动转给 'occlusion'
+            if (id === 'image') id = 'occlusion';
+            currentApp.value = id;
+        };
+
+        const handleQuickAddConcept = (mode) => {
+            // 兼容首页快捷添加的 'image' 指令
+            if (mode === 'image') mode = 'occlusion';
+            
+            currentApp.value = mode;
+            conceptInitialAction.value = 'add';
+            setTimeout(() => { conceptInitialAction.value = null; }, 500);
+        };
+        // ==========================================
+
         const handleAddWord = async (wordObj) => {
             vocabModule.newWord.value = wordObj; 
             await vocabModule.addManualWord();
@@ -246,12 +268,6 @@ const app = createApp({
             }
         };
 
-        const handleQuickAddConcept = (mode) => {
-            currentApp.value = mode;
-            conceptInitialAction.value = 'add';
-            setTimeout(() => { conceptInitialAction.value = null; }, 500);
-        };
-        
         const handleDashboardAddConcept = (newConcept) => {
             conceptModule.addConcept(newConcept);
         };
@@ -271,8 +287,9 @@ const app = createApp({
             ...pomodoroModule,
             ...conceptModule, 
             ...feynmanModule,
-            ...occlusionModule, // 确保这个模块向外暴露了数据，这样页面才能用
+            ...occlusionModule,
             
+            handleSwitchApp, // 暴露给模板使用
             handleAddWord,
             handleRecitationRequest,
             handlePostponeTask,

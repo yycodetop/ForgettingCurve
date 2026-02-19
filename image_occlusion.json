@@ -141,6 +141,8 @@
     ],
     "proficiency": 0,
     "reviewCount": 0,
-    "lastReview": null
+    "lastReview": null,
+    "pinned": false,
+    "inCurve": false
   }
 ]
