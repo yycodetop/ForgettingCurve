@@ -1,7 +1,7 @@
 /**
  * routes/concepts.js
  * 处理概念知识库的增删改查及 Excel 导入导出
- * 迭代 v2.0: 增加 Excel 模板下载与批量导入功能
+ * 迭代 v2.1: 增加对 orderNum 排序编号的自动分配与支持
  */
 const express = require('express');
 const router = express.Router();
@@ -10,17 +10,11 @@ const path = require('path');
 const multer = require('multer');
 const XLSX = require('xlsx');
 
-// 配置内存存储，用于处理上传的文件
 const upload = multer({ storage: multer.memoryStorage() });
-
-// 数据文件路径
 const DATA_FILE = path.join(__dirname, '../concepts.json');
 
-// 辅助函数：读取数据
 const readData = () => {
-    if (!fs.existsSync(DATA_FILE)) {
-        return [];
-    }
+    if (!fs.existsSync(DATA_FILE)) return [];
     try {
         const data = fs.readFileSync(DATA_FILE, 'utf8');
         return JSON.parse(data || '[]');
@@ -30,7 +24,6 @@ const readData = () => {
     }
 };
 
-// 辅助函数：写入数据
 const writeData = (data) => {
     try {
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -39,17 +32,14 @@ const writeData = (data) => {
     }
 };
 
-// GET: 获取所有概念
 router.get('/', (req, res) => {
     const data = readData();
     res.json(data);
 });
 
-// GET: 下载导入模板
 router.get('/template', (req, res) => {
     try {
         const wb = XLSX.utils.book_new();
-        // 定义表头和示例文本
         const ws_data = [
             ["学科", "年级", "标题", "内容"],
             ["数学", "初一", "有理数", "有理数是{{整数}}和{{分数}}的统称。"],
@@ -58,7 +48,6 @@ router.get('/template', (req, res) => {
         ];
         const ws = XLSX.utils.aoa_to_sheet(ws_data);
         
-        // 设置列宽
         ws['!cols'] = [{ wch: 10 }, { wch: 10 }, { wch: 20 }, { wch: 50 }];
         
         XLSX.utils.book_append_sheet(wb, ws, "导入模板");
@@ -74,7 +63,6 @@ router.get('/template', (req, res) => {
     }
 });
 
-// POST: Excel 批量导入
 router.post('/upload', upload.single('file'), (req, res) => {
     try {
         if (!req.file) {
@@ -89,33 +77,46 @@ router.post('/upload', upload.single('file'), (req, res) => {
             return res.json({ success: false, message: 'Excel is empty' });
         }
 
+        const currentData = readData();
+        const maxOrderMap = {};
+        
+        // 预先计算已有数据中每个 学科+年级 的最大编号
+        currentData.forEach(item => {
+            const key = `${item.subject}-${item.grade}`;
+            const order = Number(item.orderNum) || 0;
+            if (!maxOrderMap[key] || order > maxOrderMap[key]) {
+                maxOrderMap[key] = order;
+            }
+        });
+
         const newItems = [];
         const timestamp = Date.now();
 
         rawData.forEach((row, index) => {
-            // 兼容中文表头和可能的英文表头
-            const subject = row['学科'] || row['subject'];
-            const grade = row['年级'] || row['grade'];
+            const subject = String(row['学科'] || row['subject'] || '通用').trim();
+            const grade = String(row['年级'] || row['grade'] || '通用').trim();
             const title = row['标题'] || row['title'];
             const content = row['内容'] || row['content'];
 
-            // 只有标题和内容都存在时才导入
             if (title && content) {
+                const key = `${subject}-${grade}`;
+                maxOrderMap[key] = (maxOrderMap[key] || 0) + 1; // 分配递增编号
+
                 newItems.push({
-                    id: timestamp + index + Math.random(), // 确保 ID 唯一
-                    type: 'cloze', // 默认为挖空题
-                    subject: String(subject || '通用').trim(),
-                    grade: String(grade || '通用').trim(),
+                    id: timestamp + index + Math.random(),
+                    type: 'cloze',
+                    subject: subject,
+                    grade: grade,
+                    orderNum: maxOrderMap[key],
                     title: String(title).trim(),
                     content: String(content).trim(),
+                    isPinned: false, // 默认不置顶
                     lastReview: null
                 });
             }
         });
 
         if (newItems.length > 0) {
-            const currentData = readData();
-            // 新导入的数据放在最前面
             const updatedData = [...newItems, ...currentData];
             writeData(updatedData);
             res.json({ success: true, count: newItems.length });
@@ -129,7 +130,6 @@ router.post('/upload', upload.single('file'), (req, res) => {
     }
 });
 
-// POST: 新增概念
 router.post('/', (req, res) => {
     const list = readData();
     const newItem = { 
@@ -142,7 +142,6 @@ router.post('/', (req, res) => {
     res.json(newItem);
 });
 
-// PUT: 更新概念
 router.put('/:id', (req, res) => {
     const list = readData();
     const id = parseFloat(req.params.id);
@@ -157,7 +156,6 @@ router.put('/:id', (req, res) => {
     }
 });
 
-// DELETE: 删除概念
 router.delete('/:id', (req, res) => {
     const list = readData();
     const id = parseFloat(req.params.id);

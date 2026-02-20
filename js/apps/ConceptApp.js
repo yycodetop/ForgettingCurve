@@ -1,11 +1,11 @@
 /**
  * js/apps/ConceptApp.js
- * 概念学习通用应用框架
- * 迭代 v3.3 (修复版): 
- * 1. 修复控制台报错：调整代码执行顺序，确保 isDueForReview 等辅助函数在 computed 之前定义
- * 2. 保持所有 v3.2 功能：遗忘曲线册、当日复习、判题逻辑、行内填写
+ * 概念学习通用应用框架 (挖空填空)
+ * 迭代 v3.5 (UI布局优化版): 
+ * 1. 调整卡片布局，状态标签（错题、待复习等）移至左下角
+ * 2. 优化“开始背诵”按钮长度，与状态标签同行显示
  */
-import { ref, computed, nextTick, onUnmounted, watch } from 'vue';
+import { ref, computed, nextTick, onUnmounted } from 'vue';
 
 export default {
     props: ['mode', 'concepts', 'subjects', 'grades', 'initialAction'], 
@@ -94,47 +94,52 @@ export default {
 
                 <div v-else class="grid grid-cols-3 gap-4 pb-20">
                     <div v-for="item in displayList" :key="item.id" 
-                         class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col relative overflow-hidden">
+                         class="bg-white rounded-2xl p-5 border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col relative overflow-hidden"
+                         :class="item.isPinned ? 'border-amber-200 ring-1 ring-amber-100' : 'border-slate-100'">
                         
                         <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br opacity-10 rounded-bl-3xl -mr-2 -mt-2 pointer-events-none" :class="modeConfig.gradientClass"></div>
 
-                        <div v-if="item.status === 'correct'" class="absolute top-3 right-3 bg-emerald-100 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                            <i class="fas fa-check"></i> 全对
-                        </div>
-                        <div v-else-if="item.status === 'error'" class="absolute top-3 right-3 bg-red-50 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-100 flex items-center gap-1">
-                            <i class="fas fa-exclamation-circle"></i> 错题
-                        </div>
-                        <div v-if="isDueForReview(item)" class="absolute top-3 right-16 bg-indigo-100 text-indigo-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-200 flex items-center gap-1">
-                            <i class="fas fa-clock"></i> 待复习
-                        </div>
-
                         <div class="flex justify-between items-start mb-3">
-                            <div class="flex gap-1">
+                            <div class="flex gap-1 flex-wrap">
                                 <span class="text-[10px] font-bold px-2 py-1 rounded border" :class="getSubjectColor(item.subject)">{{ item.subject }}</span>
                                 <span v-if="item.grade" class="text-[10px] font-bold px-2 py-1 rounded border bg-slate-50 text-slate-500 border-slate-200">{{ item.grade }}</span>
+                                <span v-if="item.orderNum && item.orderNum > 0" class="text-[10px] font-bold px-2 py-1 rounded border bg-indigo-50 text-indigo-500 border-indigo-100">No.{{ item.orderNum }}</span>
                             </div>
-                            <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button @click="openAddModal(item)" class="w-6 h-6 rounded bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-500 transition"><i class="fas fa-pen text-xs"></i></button>
-                                <button @click="$emit('delete-concept', item.id)" class="w-6 h-6 rounded bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 transition"><i class="fas fa-trash text-xs"></i></button>
+                            <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button @click.stop="togglePin(item)" class="w-6 h-6 rounded flex items-center justify-center transition" :class="item.isPinned ? 'bg-amber-100 text-amber-500' : 'bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-500'"><i class="fas fa-thumbtack text-xs"></i></button>
+                                <button @click.stop="openAddModal(item)" class="w-6 h-6 rounded bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-500 transition flex items-center justify-center"><i class="fas fa-pen text-xs"></i></button>
+                                <button @click.stop="$emit('delete-concept', item.id)" class="w-6 h-6 rounded bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 transition flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>
                             </div>
                         </div>
 
-                        <h4 class="font-bold text-slate-800 text-lg mb-2 line-clamp-1" :title="item.title">{{ item.title }}</h4>
+                        <h4 class="font-bold text-slate-800 text-lg mb-2 line-clamp-1 pr-6" :title="item.title">{{ item.title }}</h4>
                         
-                        <div class="flex-1 min-h-[60px] mb-4">
+                        <div class="flex-1 min-h-[60px] mb-3">
                             <p v-if="mode === 'cloze'" class="text-sm text-slate-500 leading-relaxed line-clamp-3 font-mono bg-slate-50 p-2 rounded-lg whitespace-pre-wrap" v-html="formatClozePreview(item.content)"></p>
-                            
                             <div v-else-if="mode === 'image'" class="w-full h-24 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 overflow-hidden relative">
                                 <img v-if="item.imageUrl" :src="item.imageUrl" class="w-full h-full object-cover">
                                 <i v-else class="fas fa-image text-2xl"></i>
                             </div>
-                            
                             <p v-else-if="mode === 'feynman'" class="text-sm text-slate-500 leading-relaxed line-clamp-3 italic">"{{ item.content }}"</p>
                         </div>
 
-                        <button @click="startRecitation(item)" class="w-full py-2 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2" :class="modeConfig.actionBtnClass">
-                            <i :class="modeConfig.actionIcon"></i> {{ modeConfig.actionText }}
-                        </button>
+                        <div class="mt-auto pt-4 border-t border-slate-50 flex items-center justify-between">
+                            <div class="flex gap-1.5 flex-wrap">
+                                <div v-if="item.status === 'correct'" class="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded-md border border-emerald-100 flex items-center gap-1" title="全对">
+                                    <i class="fas fa-check"></i> 掌握
+                                </div>
+                                <div v-else-if="item.status === 'error'" class="bg-red-50 text-red-500 text-[10px] font-bold px-2 py-1 rounded-md border border-red-100 flex items-center gap-1" title="错题">
+                                    <i class="fas fa-times"></i> 错题
+                                </div>
+                                <div v-if="isDueForReview(item)" class="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-2 py-1 rounded-md border border-indigo-100 flex items-center gap-1 animate-pulse" title="待复习">
+                                    <i class="fas fa-clock"></i> 待复习
+                                </div>
+                            </div>
+
+                            <button @click="startRecitation(item)" class="px-5 py-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm transform active:scale-95 shrink-0" :class="modeConfig.actionBtnClass">
+                                <i :class="modeConfig.actionIcon"></i> {{ modeConfig.actionText }}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -190,19 +195,23 @@ export default {
                 </div>
                 
                 <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">学科</label>
-                            <select v-model="newItem.subject" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500">
+                            <select v-model="newItem.subject" @change="handleSubjectGradeChange" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500">
                                 <option v-for="s in subjects" :value="s">{{ s }}</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">年级</label>
-                            <select v-model="newItem.grade" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500">
-                                <option value="" disabled>选择年级</option>
+                            <select v-model="newItem.grade" @change="handleSubjectGradeChange" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500">
+                                <option value="" disabled>选择</option>
                                 <option v-for="g in grades" :value="g">{{ g }}</option>
                             </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">排序编号</label>
+                            <input type="number" v-model.number="newItem.orderNum" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-indigo-600 outline-none focus:border-indigo-500" placeholder="自动分配">
                         </div>
                     </div>
 
@@ -400,7 +409,6 @@ export default {
         focus: { mounted: (el) => el.focus() }
     },
     setup(props, { emit }) {
-        // --- 1. 基础工具函数定义 (最优先，避免死区问题) ---
         const today = computed(() => new Date().toISOString().split('T')[0]);
 
         const isDueForReview = (item) => {
@@ -419,13 +427,12 @@ export default {
             return result.toISOString().split('T')[0];
         };
 
-        // --- 2. 响应式状态定义 ---
         const currentSubject = ref('all');
         const currentGrade = ref('all');
         const showAddModal = ref(false);
         const isEditing = ref(false);
         const editingId = ref(null);
-        const newItem = ref({ subject: '数学', grade: '', title: '', content: '' });
+        const newItem = ref({ subject: '通用', grade: '通用', title: '', content: '', orderNum: 1, isPinned: false });
 
         const showEbbinghausModal = ref(false);
         const isDailyReviewMode = ref(false);
@@ -443,28 +450,53 @@ export default {
         const isListening = ref(false);
         let recognition = null; 
 
-        // --- 3. 计算属性 (依赖工具函数) ---
         const modeConfig = computed(() => {
             const configs = {
                 cloze: { title: '挖空填空', subtitle: 'Cloze Deletion', icon: 'fas fa-highlighter', colorClass: 'bg-amber-500', btnClass: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200', activeItemClass: 'bg-amber-50 text-amber-600', gradientClass: 'from-amber-400 to-orange-500', actionText: '开始背诵', actionIcon: 'fas fa-eye', actionBtnClass: 'bg-amber-50 text-amber-600 hover:bg-amber-100' },
-                image: { title: '图片遮挡', subtitle: 'Image Occlusion', icon: 'fas fa-image', colorClass: 'bg-pink-500', btnClass: 'bg-pink-500 hover:bg-pink-600 shadow-pink-200', activeItemClass: 'bg-pink-50 text-pink-600', gradientClass: 'from-pink-400 to-rose-500', actionText: '进入遮挡', actionIcon: 'fas fa-layer-group', actionBtnClass: 'bg-pink-50 text-pink-600 hover:bg-pink-100' },
-                feynman: { title: '费曼自测', subtitle: 'Feynman Technique', icon: 'fas fa-chalkboard-teacher', colorClass: 'bg-cyan-500', btnClass: 'bg-cyan-500 hover:bg-cyan-600 shadow-cyan-200', activeItemClass: 'bg-cyan-50 text-cyan-600', gradientClass: 'from-cyan-400 to-blue-500', actionText: '开始授课', actionIcon: 'fas fa-microphone', actionBtnClass: 'bg-cyan-50 text-cyan-600 hover:bg-cyan-100' }
             };
             return configs[props.mode] || configs.cloze;
         });
 
+        // --- 核心：多重排序逻辑 ---
         const filteredList = (sub) => {
-            let list = props.concepts;
+            let list = [...props.concepts];
             if (sub !== 'all') list = list.filter(c => c.subject === sub);
             if (currentGrade.value !== 'all') list = list.filter(c => c.grade === currentGrade.value);
-            return list;
+            
+            return list.sort((a, b) => {
+                // 1. 置顶优先
+                if (a.isPinned && !b.isPinned) return -1;
+                if (!a.isPinned && b.isPinned) return 1;
+                
+                // 2. 编号从小到大
+                const orderA = (a.orderNum !== undefined && a.orderNum !== null && a.orderNum !== '') ? Number(a.orderNum) : Infinity;
+                const orderB = (b.orderNum !== undefined && b.orderNum !== null && b.orderNum !== '') ? Number(b.orderNum) : Infinity;
+                if (orderA !== orderB) return orderA - orderB;
+                
+                // 3. ID 倒序
+                return b.id - a.id;
+            });
         };
         const displayList = computed(() => filteredList(currentSubject.value));
 
-        const currentReciteList = computed(() => {
-            if (isDailyReviewMode.value) {
-                return props.concepts.filter(isDueForReview);
+        const calculateNextOrderNum = (subject, grade) => {
+            const existing = props.concepts.filter(c => c.subject === subject && c.grade === grade);
+            const maxOrder = existing.reduce((max, c) => Math.max(max, Number(c.orderNum) || 0), 0);
+            return maxOrder + 1;
+        };
+
+        const togglePin = (item) => {
+            emit('update-concept', item.id, { isPinned: !item.isPinned });
+        };
+
+        const handleSubjectGradeChange = () => {
+            if (!isEditing.value) {
+                newItem.value.orderNum = calculateNextOrderNum(newItem.value.subject, newItem.value.grade);
             }
+        };
+
+        const currentReciteList = computed(() => {
+            if (isDailyReviewMode.value) return props.concepts.filter(isDueForReview);
             if (!currentReciteItem.value) return [];
             return props.concepts.filter(c => 
                 c.subject === currentReciteItem.value.subject && 
@@ -485,11 +517,8 @@ export default {
             return Object.keys(stats).sort().reduce((obj, key) => { obj[key] = stats[key]; return obj; }, {});
         });
 
-        const dailyReviewCount = computed(() => {
-            return props.concepts.filter(isDueForReview).length;
-        });
+        const dailyReviewCount = computed(() => props.concepts.filter(isDueForReview).length);
 
-        // --- 4. 业务逻辑函数 ---
         const getListTitleClass = (item) => {
             if (currentReciteItem.value && currentReciteItem.value.id === item.id) return 'text-indigo-400';
             if (item.status === 'correct') return 'text-emerald-500 font-bold';
@@ -665,16 +694,35 @@ export default {
         const stopSpeech = () => { if (recognition) { recognition.stop(); recognition = null; } isListening.value = false; };
         
         const openAddModal = (item) => {
-            if (item) { isEditing.value = true; editingId.value = item.id; newItem.value = JSON.parse(JSON.stringify(item)); } 
-            else { isEditing.value = false; editingId.value = null; newItem.value = { subject: props.subjects[0] || '数学', grade: props.grades[0] || '', title: '', content: '' }; }
+            if (item) { 
+                isEditing.value = true; 
+                editingId.value = item.id; 
+                newItem.value = JSON.parse(JSON.stringify(item)); 
+            } else { 
+                isEditing.value = false; 
+                editingId.value = null; 
+                const defaultSub = props.subjects[0] || '通用';
+                const defaultGrade = props.grades[0] || '通用';
+                newItem.value = { 
+                    subject: defaultSub, 
+                    grade: defaultGrade, 
+                    title: '', 
+                    content: '',
+                    orderNum: calculateNextOrderNum(defaultSub, defaultGrade),
+                    isPinned: false
+                }; 
+            }
             showAddModal.value = true;
         };
+
         const handleSave = () => {
             if (!newItem.value.title) return alert('请输入标题');
+            newItem.value.orderNum = Number(newItem.value.orderNum) || 0;
             if (isEditing.value) emit('update-concept', editingId.value, newItem.value);
             else emit('add-concept', { type: props.mode, ...newItem.value });
             showAddModal.value = false;
         };
+
         const downloadTemplate = () => window.open('/api/concepts/template');
         const handleFileUpload = async (event) => {
             const file = event.target.files[0];
@@ -696,7 +744,7 @@ export default {
         return {
             currentSubject, currentGrade, displayList, modeConfig, today,
             showAddModal, isEditing, newItem, showReciteModal, currentReciteItem, parsedClozeContent, isReviewMode,
-            openAddModal, handleSave, filteredList, getSubjectColor, formatClozePreview,
+            openAddModal, handleSave, filteredList, getSubjectColor, formatClozePreview, togglePin, handleSubjectGradeChange,
             startRecitation, exitRecitation, switchReciteItem, currentReciteList, getClozeClass, getListTitleClass,
             handleInputFocus, handleInputChange, focusNextInput, activeInputIndex,
             toggleSpeech, isListening, downloadTemplate, handleFileUpload, submitCheck, isGrading, resultModal,
