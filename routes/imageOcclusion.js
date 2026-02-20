@@ -1,13 +1,16 @@
+/**
+ * routes/imageOcclusion.js
+ * 图像遮挡路由 - v2.2
+ * 1. 修复：新增时正确保存前端传递的 orderNum 排序字段
+ */
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
-// --- 1. 配置存储引擎 ---
 const UPLOAD_DIR = path.join(__dirname, '../uploads/occlusion');
 
-// 安全检查并递归创建存储目录
 if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
@@ -17,14 +20,12 @@ const storage = multer.diskStorage({
         cb(null, UPLOAD_DIR);
     },
     filename: function (req, file, cb) {
-        // 生成唯一文件名
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname) || '.png'; // 防止无扩展名
+        const ext = path.extname(file.originalname) || '.png'; 
         cb(null, 'occlusion-' + uniqueSuffix + ext);
     }
 });
 
-// 放宽上传限制至 15MB
 const upload = multer({ 
     storage: storage,
     limits: { fileSize: 15 * 1024 * 1024 } 
@@ -57,7 +58,6 @@ router.post('/', upload.single('imageFile'), (req, res) => {
         let imageUrl = '';
 
         if (req.file) {
-            // 返回可直接被静态服务托管的相对路径
             imageUrl = `/uploads/occlusion/${req.file.filename}`;
         } else if (req.body.imageUrl) {
             imageUrl = req.body.imageUrl;
@@ -67,12 +67,15 @@ router.post('/', upload.single('imageFile'), (req, res) => {
             id: Date.now(),
             subject: req.body.subject,
             grade: req.body.grade,
+            orderNum: Number(req.body.orderNum) || 0, // 新增：保存排序编号
             title: req.body.title,
             imageUrl: imageUrl,
             masks: JSON.parse(req.body.masks || '[]'),
             proficiency: 0,
             reviewCount: 0,
-            lastReview: null
+            lastReview: null,
+            pinned: false,
+            inCurve: false
         };
 
         list.unshift(newItem);
@@ -92,9 +95,15 @@ router.put('/:id', (req, res) => {
     
     if (index !== -1) {
         const updatedItem = { ...list[index], ...req.body };
+        // 确保如果是字符串形式传过来的掩码数据，正确解析回数组
         if (typeof req.body.masks === 'string') {
             updatedItem.masks = JSON.parse(req.body.masks);
         }
+        // 确保编号为数字
+        if (req.body.orderNum !== undefined) {
+            updatedItem.orderNum = Number(req.body.orderNum) || 0;
+        }
+
         list[index] = updatedItem;
         writeData(list);
         res.json(list[index]);
@@ -110,7 +119,6 @@ router.delete('/:id', (req, res) => {
     const item = list.find(i => i.id === id);
 
     if (item) {
-        // 如果是本地存储的图片，尝试将其从物理磁盘上删除
         if (item.imageUrl && item.imageUrl.startsWith('/uploads/')) {
             const filePath = path.join(__dirname, '..', item.imageUrl);
             if (fs.existsSync(filePath)) {

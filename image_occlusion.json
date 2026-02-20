@@ -51,7 +51,8 @@
     ],
     "proficiency": 0,
     "reviewCount": 0,
-    "lastReview": null
+    "lastReview": null,
+    "orderNum": 2
   },
   {
     "id": 1771481928924,
@@ -143,6 +144,7 @@
     "reviewCount": 0,
     "lastReview": null,
     "pinned": false,
-    "inCurve": false
+    "inCurve": false,
+    "orderNum": 1
   }
 ]

@@ -1,11 +1,8 @@
 /**
  * js/apps/ImageOcclusionApp.js
- * 图像遮挡独立模块 - v2.2 (迭代版)
- * 更新内容：
- * 1. 卡片图片改为等比缩放(object-contain)，显示全貌
- * 2. 增加自测模式下的左右切换功能（支持键盘左右键）
- * 3. 增加标题模糊搜索功能
- * 4. 支持卡片置顶(Pinned)和加入遗忘曲线(inCurve)标记
+ * 图像遮挡独立模块 - v2.3 (排序与编号迭代版)
+ * 1. 增加排序编号 (orderNum) 与自动计算
+ * 2. 增加列表从小到大排序逻辑
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 
@@ -113,9 +110,10 @@ export default {
                         </div>
 
                         <div class="flex-1 px-1">
-                            <div class="flex gap-2 mb-2">
+                            <div class="flex gap-1.5 mb-2 flex-wrap">
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-50 text-slate-500 border-slate-100">{{ item.subject }}</span>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-50 text-slate-500 border-slate-200">{{ item.grade }}</span>
+                                <span v-if="item.grade" class="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-50 text-slate-500 border-slate-200">{{ item.grade }}</span>
+                                <span v-if="item.orderNum && item.orderNum > 0" class="text-[10px] font-bold px-2 py-0.5 rounded border bg-pink-50 text-pink-500 border-pink-100">No.{{ item.orderNum }}</span>
                             </div>
                             <h4 class="font-bold text-slate-800 text-lg line-clamp-1 mb-1" :title="item.title">{{ item.title }}</h4>
                         </div>
@@ -159,7 +157,7 @@ export default {
             </div>
 
             <div class="flex flex-1 overflow-hidden">
-                <div class="w-80 bg-slate-800/50 border-r border-white/5 p-6 flex flex-col gap-6 overflow-y-auto">
+                <div class="w-[350px] bg-slate-800/50 border-r border-white/5 p-6 flex flex-col gap-6 overflow-y-auto">
                     <label v-if="!imgPreview" class="border-2 border-dashed border-slate-600 rounded-2xl h-48 flex flex-col items-center justify-center text-slate-400 hover:border-pink-500 hover:text-pink-500 transition cursor-pointer group hover:bg-slate-800/50">
                         <i class="fas fa-cloud-upload-alt text-3xl mb-2 group-hover:scale-110 transition-transform"></i>
                         <span class="text-sm font-bold">点击选择图片</span>
@@ -178,23 +176,27 @@ export default {
                     </div>
 
                     <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">标题 <span class="text-pink-500">*</span></label>
-                            <input v-model="form.title" class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-sm text-white focus:border-pink-500 outline-none transition" placeholder="例如: 动植物细胞结构图">
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1">学科</label>
-                                <select v-model="form.subject" class="w-full px-3 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-sm text-white focus:border-pink-500 outline-none transition">
+                                <select v-model="form.subject" @change="handleSubjectGradeChange" class="w-full px-2 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-sm text-white focus:border-pink-500 outline-none transition">
                                     <option v-for="s in subjects" :value="s">{{ s }}</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1">年级</label>
-                                <select v-model="form.grade" class="w-full px-3 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-sm text-white focus:border-pink-500 outline-none transition">
+                                <select v-model="form.grade" @change="handleSubjectGradeChange" class="w-full px-2 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-sm text-white focus:border-pink-500 outline-none transition">
                                     <option v-for="g in grades" :value="g">{{ g }}</option>
                                 </select>
                             </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">排序编号</label>
+                                <input type="number" v-model.number="form.orderNum" class="w-full px-2 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-sm text-pink-400 font-bold focus:border-pink-500 outline-none transition" placeholder="自动计算">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">标题 <span class="text-pink-500">*</span></label>
+                            <input v-model="form.title" class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-sm text-white focus:border-pink-500 outline-none transition" placeholder="例如: 动植物细胞结构图">
                         </div>
                     </div>
                 </div>
@@ -270,9 +272,9 @@ export default {
     setup(props, { emit }) {
         const currentSubject = ref('all');
         const currentGrade = ref('all');
-        const searchQuery = ref(''); // 搜索关键字
+        const searchQuery = ref(''); 
         
-        // 核心过滤与排序逻辑
+        // --- 核心修复：多重排序逻辑 ---
         const filteredList = computed(() => {
             let list = [...props.occlusions];
             
@@ -286,22 +288,28 @@ export default {
                 list = list.filter(c => c.title.toLowerCase().includes(keyword));
             }
 
-            // 3. 排序：置顶(pinned)优先，其次按ID倒序(最新创建的在前)
+            // 3. 排序：置顶(pinned)优先 > 编号(orderNum)从小到大 > 创建时间倒序
             return list.sort((a, b) => {
                 if (a.pinned && !b.pinned) return -1;
                 if (!a.pinned && b.pinned) return 1;
+                
+                const orderA = (a.orderNum !== undefined && a.orderNum !== null && a.orderNum !== '') ? Number(a.orderNum) : Infinity;
+                const orderB = (b.orderNum !== undefined && b.orderNum !== null && b.orderNum !== '') ? Number(b.orderNum) : Infinity;
+                
+                if (orderA !== orderB) return orderA - orderB;
                 return b.id - a.id;
             });
         });
 
-        // --- 卡片快捷操作 ---
-        const togglePin = (item) => {
-            emit('update-occlusion', item.id, { pinned: !item.pinned });
+        // 自动计算下一个编号
+        const calculateNextOrderNum = (subject, grade) => {
+            const existing = props.occlusions.filter(c => c.subject === subject && c.grade === grade);
+            const maxOrder = existing.reduce((max, c) => Math.max(max, Number(c.orderNum) || 0), 0);
+            return maxOrder + 1;
         };
 
-        const toggleCurve = (item) => {
-            emit('update-occlusion', item.id, { inCurve: !item.inCurve });
-        };
+        const togglePin = (item) => emit('update-occlusion', item.id, { pinned: !item.pinned });
+        const toggleCurve = (item) => emit('update-occlusion', item.id, { inCurve: !item.inCurve });
 
         // --- 编辑逻辑 ---
         const showEditor = ref(false);
@@ -310,22 +318,24 @@ export default {
         const imageFile = ref(null);
         const imageContainer = ref(null);
         const currentMasks = ref([]); 
-        const form = ref({ id: null, title: '', subject: '', grade: '' });
-
-        const isDrawing = ref(false);
-        const drawStartPos = ref({ x: 0, y: 0 });
-        const activeDrawingMask = ref(null);
+        const form = ref({ id: null, title: '', subject: '', grade: '', orderNum: 1 });
 
         const openEditor = (item) => {
             if (item) {
                 isEditing.value = true;
                 form.value = { ...item };
+                form.value.orderNum = item.orderNum || 0;
                 imgPreview.value = item.imageUrl;
                 currentMasks.value = JSON.parse(JSON.stringify(item.masks || []));
                 imageFile.value = null;
             } else {
                 isEditing.value = false;
-                form.value = { title: '', subject: props.subjects?.[0] || '综合', grade: props.grades?.[0] || '通用' };
+                const defaultSub = props.subjects?.[0] || '综合';
+                const defaultGrade = props.grades?.[0] || '通用';
+                form.value = { 
+                    title: '', subject: defaultSub, grade: defaultGrade, 
+                    orderNum: calculateNextOrderNum(defaultSub, defaultGrade)
+                };
                 imgPreview.value = null;
                 currentMasks.value = [];
                 imageFile.value = null;
@@ -333,6 +343,12 @@ export default {
             isDrawing.value = false;
             activeDrawingMask.value = null;
             showEditor.value = true;
+        };
+
+        const handleSubjectGradeChange = () => {
+            if (!isEditing.value) {
+                form.value.orderNum = calculateNextOrderNum(form.value.subject, form.value.grade);
+            }
         };
 
         const handleImageSelect = (e) => {
@@ -348,6 +364,10 @@ export default {
             };
             reader.readAsDataURL(file);
         };
+
+        const isDrawing = ref(false);
+        const drawStartPos = ref({ x: 0, y: 0 });
+        const activeDrawingMask = ref(null);
 
         const startDraw = (e) => {
             if (!imageContainer.value) return;
@@ -396,10 +416,13 @@ export default {
             if (!imgPreview.value) return alert('请先上传图片底图！');
             if (!form.value.title.trim()) return alert('请输入卡片标题！');
 
+            const orderNumValue = Number(form.value.orderNum) || 0;
+
             const formData = new FormData();
             formData.append('subject', form.value.subject);
             formData.append('grade', form.value.grade);
             formData.append('title', form.value.title);
+            formData.append('orderNum', orderNumValue);
             formData.append('masks', JSON.stringify(currentMasks.value));
             
             if (imageFile.value) formData.append('imageFile', imageFile.value);
@@ -407,7 +430,11 @@ export default {
 
             if (isEditing.value) {
                 emit('update-occlusion', form.value.id, {
-                    title: form.value.title, subject: form.value.subject, grade: form.value.grade, masks: currentMasks.value
+                    title: form.value.title, 
+                    subject: form.value.subject, 
+                    grade: form.value.grade, 
+                    orderNum: orderNumValue,
+                    masks: currentMasks.value
                 });
             } else {
                 emit('add-occlusion', formData);
@@ -420,7 +447,6 @@ export default {
         const testItem = ref({});
         const testMasksStatus = ref([]); 
 
-        // 当前题目在列表中的索引
         const currentTestIndex = computed(() => filteredList.value.findIndex(item => item.id === testItem.value.id));
         const hasPrevTest = computed(() => currentTestIndex.value > 0);
         const hasNextTest = computed(() => currentTestIndex.value < filteredList.value.length - 1);
@@ -440,7 +466,6 @@ export default {
 
         const closeTestModal = () => showTestModal.value = false;
 
-        // 全局键盘监听，用于左右箭头切换
         const handleKeydown = (e) => {
             if (!showTestModal.value) return;
             if (e.key === 'ArrowLeft' && hasPrevTest.value) {
@@ -450,13 +475,8 @@ export default {
             }
         };
 
-        onMounted(() => {
-            window.addEventListener('keydown', handleKeydown);
-        });
-
-        onUnmounted(() => {
-            window.removeEventListener('keydown', handleKeydown);
-        });
+        onMounted(() => window.addEventListener('keydown', handleKeydown));
+        onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
 
         const toggleMask = (idx) => testMasksStatus.value[idx].visible = !testMasksStatus.value[idx].visible;
         const toggleAllMasks = (visible) => testMasksStatus.value.forEach(m => m.visible = visible);
@@ -468,21 +488,15 @@ export default {
                 lastReview: new Date().toISOString()
             });
             testItem.value.proficiency = score;
-            
-            // 评星后如果还有下一题，稍微延迟自动跳到下一题 (提升流畅度)
-            if (hasNextTest.value) {
-                setTimeout(() => navTest(1), 300);
-            }
+            if (hasNextTest.value) setTimeout(() => navTest(1), 300);
         };
 
         return {
             currentSubject, currentGrade, searchQuery, filteredList,
             showEditor, isEditing, form, imgPreview, imageContainer, currentMasks,
-            openEditor, handleImageSelect, removeMask, saveItem,
+            openEditor, handleImageSelect, removeMask, saveItem, handleSubjectGradeChange,
             togglePin, toggleCurve,
-            
             startDraw, drawing, endDraw, activeDrawingMask,
-
             showTestModal, testItem, testMasksStatus,
             hasPrevTest, hasNextTest, navTest, closeTestModal,
             startTest, toggleMask, toggleAllMasks, rateProficiency
