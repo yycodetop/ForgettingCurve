@@ -1,6 +1,6 @@
 /**
  * routes/vocabulary.js
- * 单词/短语及错题管理 (v17.0: 新增错题本后端支持)
+ * 单词/短语及错题管理 (v18.0: 支持年级、学期、类型分类与排序)
  */
 const express = require('express');
 const router = express.Router();
@@ -11,7 +11,7 @@ const XLSX = require('xlsx');
 
 const VOCAB_FILE = path.join(__dirname, '../vocabulary.json');
 const BOOKS_FILE = path.join(__dirname, '../books.json');
-const MISTAKES_FILE = path.join(__dirname, '../mistakes.json'); // 新增错题文件
+const MISTAKES_FILE = path.join(__dirname, '../mistakes.json');
 const upload = multer({ storage: multer.memoryStorage() });
 
 // 辅助读取函数
@@ -26,8 +26,8 @@ const writeJson = (file, data) => fs.writeFileSync(file, JSON.stringify(data, nu
 // --- 初始化逻辑 ---
 const initFiles = () => {
     const defaultBooks = [
-        { id: 'default_word_book', name: '核心单词库', type: 'word', icon: 'fas fa-book', isSystem: true },
-        { id: 'default_phrase_book', name: '高频短语库', type: 'phrase', icon: 'fas fa-quote-right', isSystem: true }
+        { id: 'default_word_book', name: '核心单词库', type: 'word', icon: 'fas fa-book', isSystem: true, grade: '其他', term: '全学年', sortOrder: 99 },
+        { id: 'default_phrase_book', name: '高频短语库', type: 'phrase', icon: 'fas fa-quote-right', isSystem: true, grade: '其他', term: '全学年', sortOrder: 100 }
     ];
     let books = [];
     if (fs.existsSync(BOOKS_FILE)) books = readJson(BOOKS_FILE);
@@ -35,16 +35,13 @@ const initFiles = () => {
         writeJson(BOOKS_FILE, defaultBooks);
     }
     if (!fs.existsSync(VOCAB_FILE)) writeJson(VOCAB_FILE, []);
-    if (!fs.existsSync(MISTAKES_FILE)) writeJson(MISTAKES_FILE, []); // 初始化错题本
+    if (!fs.existsSync(MISTAKES_FILE)) writeJson(MISTAKES_FILE, []); 
 };
 initFiles();
 
-// --- 错题本 (Mistakes) 接口 [NEW] ---
-
-// 获取错题列表
+// --- 错题本 (Mistakes) 接口 ---
 router.get('/mistakes', (req, res) => {
     const mistakes = readJson(MISTAKES_FILE);
-    // 按日期倒序，同一天内按错误次数倒序
     mistakes.sort((a, b) => {
         if (a.date !== b.date) return new Date(b.date) - new Date(a.date);
         return b.count - a.count;
@@ -52,40 +49,28 @@ router.get('/mistakes', (req, res) => {
     res.json(mistakes);
 });
 
-// 记录错题 (自动合并同一天的相同单词)
 router.post('/mistakes', (req, res) => {
     const { word, meaning, bookId } = req.body;
     if (!word) return res.status(400).json({ error: 'Missing word' });
 
     const mistakes = readJson(MISTAKES_FILE);
     const today = new Date().toISOString().split('T')[0];
-
-    // 查找今天是否已经记录过该词
     const existingIndex = mistakes.findIndex(m => m.date === today && m.word === word);
 
     if (existingIndex !== -1) {
-        // 已存在，计数 +1
         mistakes[existingIndex].count += 1;
-        mistakes[existingIndex].lastTime = new Date().toISOString(); // 更新最后错误时间
+        mistakes[existingIndex].lastTime = new Date().toISOString();
     } else {
-        // 新记录
         mistakes.push({
             id: Date.now().toString(),
-            date: today,
-            word,
-            meaning,
-            bookId,
-            count: 1,
-            lastTime: new Date().toISOString()
+            date: today, word, meaning, bookId, count: 1, lastTime: new Date().toISOString()
         });
     }
-
     writeJson(MISTAKES_FILE, mistakes);
     res.json({ success: true });
 });
 
 // --- 书籍 (Books) 接口 ---
-
 router.get('/books', (req, res) => res.json(readJson(BOOKS_FILE)));
 
 router.post('/books', (req, res) => {
@@ -98,11 +83,12 @@ router.post('/books', (req, res) => {
 
 router.put('/books/:id', (req, res) => {
     const bookId = req.params.id;
-    const { name, icon } = req.body;
+    // [修改] 提取并更新新的字段
+    const { name, icon, type, grade, term, sortOrder } = req.body;
     let books = readJson(BOOKS_FILE);
     const index = books.findIndex(b => b.id === bookId);
     if (index !== -1) {
-        books[index] = { ...books[index], name, icon };
+        books[index] = { ...books[index], name, icon, type, grade, term, sortOrder };
         writeJson(BOOKS_FILE, books);
         res.json({ success: true, book: books[index] });
     } else {
@@ -122,12 +108,10 @@ router.delete('/books/:id', (req, res) => {
 });
 
 // --- 单词查询 (支持多书本) ---
-
 router.get('/', (req, res) => {
     const bookId = req.query.bookId;
     const bookIds = req.query.bookIds; 
     let vocab = readJson(VOCAB_FILE);
-    
     if (bookIds) {
         const ids = bookIds.split(',');
         vocab = vocab.filter(v => ids.includes(v.bookId));
@@ -138,7 +122,6 @@ router.get('/', (req, res) => {
 });
 
 // --- 增量操作接口 ---
-
 router.post('/item', (req, res) => {
     const newItem = req.body;
     const vocab = readJson(VOCAB_FILE);
@@ -175,7 +158,6 @@ router.delete('/item/:id', (req, res) => {
 });
 
 // --- 文件操作 ---
-
 router.get('/template', (req, res) => {
     const type = req.query.type || 'word';
     const wb = XLSX.utils.book_new();
@@ -219,12 +201,8 @@ router.post('/upload', upload.single('file'), (req, res) => {
             else if (!posVal) posVal = 'n.'; 
             return {
                 id: Date.now() + Math.random(),
-                word: String(wordVal).trim(),
-                pos: String(posVal).trim(),
-                meaning: String(meaningVal).trim(),
-                type: bookType,
-                bookId: targetBookId,
-                addedAt: new Date().toISOString().split('T')[0]
+                word: String(wordVal).trim(), pos: String(posVal).trim(), meaning: String(meaningVal).trim(),
+                type: bookType, bookId: targetBookId, addedAt: new Date().toISOString().split('T')[0]
             };
         }).filter(item => item !== null);
         const currentData = readJson(VOCAB_FILE);

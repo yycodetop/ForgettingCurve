@@ -1,12 +1,3075 @@
 [
   {
+    "id": 1771763470509.7761,
+    "word": "lively",
+    "pos": "adj.",
+    "meaning": "活泼的;轻快的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈlaɪvli/"
+  },
+  {
+    "id": 1771763470509.2234,
+    "word": "modern",
+    "pos": "adj.",
+    "meaning": "现代的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈmɒd(ə)n/"
+  },
+  {
+    "id": 1771763470509.9373,
+    "word": "noisy",
+    "pos": "adj.",
+    "meaning": "吵闹的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈnɔːɪzɪ/"
+  },
+  {
+    "id": 1771763470509.4167,
+    "word": "pop (popular)",
+    "pos": "adj.",
+    "meaning": "流行的;受欢仰的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763470509.6094,
+    "word": "rock",
+    "pos": "n.",
+    "meaning": "摇滚乐",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɹɒk/"
+  },
+  {
+    "id": 1771763470509.9126,
+    "word": "sound",
+    "pos": "n.",
+    "meaning": "声音",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/saʊnd/"
+  },
+  {
+    "id": 1771763470509.224,
+    "word": "violin",
+    "pos": "n.",
+    "meaning": "小提琴",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˌvɑe.ɘˈlɘn/"
+  },
+  {
+    "id": 1771763470509.2136,
+    "word": "western",
+    "pos": "adj.",
+    "meaning": "西方的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈwɛstən/"
+  },
+  {
+    "id": 1771763470509.7178,
+    "word": "hmm",
+    "pos": "int.",
+    "meaning": "嗯",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/hm̩/"
+  },
+  {
+    "id": 1771763470509.8418,
+    "word": "by",
+    "pos": "prep.",
+    "meaning": "由......创作;被;由",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/baɪ/"
+  },
+  {
+    "id": 1771763470509.6943,
+    "word": "through",
+    "pos": "prep.",
+    "meaning": "穿过",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/θɹuː/"
+  },
+  {
+    "id": 1771763470509.3662,
+    "word": "both",
+    "pos": "pron.",
+    "meaning": "两个;两者",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bəʊθ/"
+  },
+  {
+    "id": 1771763470509.3386,
+    "word": "opera",
+    "pos": "n.",
+    "meaning": "歌剧",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɒp.əɹ.ə/"
+  },
+  {
+    "id": 1771763470509.8667,
+    "word": "voice",
+    "pos": "n.",
+    "meaning": "声音",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/vɔɪs/"
+  },
+  {
+    "id": 1771763470509.706,
+    "word": "drum",
+    "pos": "n.",
+    "meaning": "鼓",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈdɹʌm/"
+  },
+  {
+    "id": 1771763470509.6455,
+    "word": "believe",
+    "pos": "v.",
+    "meaning": "相信",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bɪˈliːv/"
+  },
+  {
+    "id": 1771763470509.5337,
+    "word": "musician",
+    "pos": "n.",
+    "meaning": "乐手;音乐家",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/mjuˈzɪʃən/"
+  },
+  {
+    "id": 1771763470509.755,
+    "word": "centre",
+    "pos": "n.",
+    "meaning": "中心",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsen.tə(ɹ)/"
+  },
+  {
+    "id": 1771763470509.0286,
+    "word": "European",
+    "pos": "adj.",
+    "meaning": "欧洲的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763470509.2617,
+    "word": "classical",
+    "pos": "adj.",
+    "meaning": "经典的;古典的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈklæsɪkl̩/"
+  },
+  {
+    "id": 1771763470509.754,
+    "word": "century",
+    "pos": "n.",
+    "meaning": "世纪",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsɛn.t͡ʃə.ɹiː/"
+  },
+  {
+    "id": 1771763470509.403,
+    "word": "composer",
+    "pos": "n.",
+    "meaning": "作曲家",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763470509.3357,
+    "word": "elder",
+    "pos": "adj.",
+    "meaning": "年长的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈeldə/"
+  },
+  {
+    "id": 1771763470509.1033,
+    "word": "waltz",
+    "pos": "n.",
+    "meaning": "华尔兹舞(曲)",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wɔːlts/"
+  },
+  {
+    "id": 1771763470509.2964,
+    "word": "another",
+    "pos": "pron.",
+    "meaning": "又一个;再一个",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/æˈnʌð.ə(ɹ)/"
+  },
+  {
+    "id": 1771763470509.6035,
+    "word": "piece",
+    "pos": "n.",
+    "meaning": "(写作、音乐或艺术的)作品",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/piːs/"
+  },
+  {
+    "id": 1771763470509.3953,
+    "word": "poor",
+    "pos": "adj.",
+    "meaning": "贫穷的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/poː/"
+  },
+  {
+    "id": 1771763470509.5068,
+    "word": "perfect",
+    "pos": "adj.",
+    "meaning": "完美的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpɜː.fɛkt/"
+  },
+  {
+    "id": 1771763470509.573,
+    "word": "sad",
+    "pos": "adj.",
+    "meaning": "令人悲伤的;令人难过的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/sæd/"
+  },
+  {
+    "id": 1771763470509.8162,
+    "word": "slow",
+    "pos": "adj.",
+    "meaning": "慢的",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/sləʊ/"
+  },
+  {
+    "id": 1771763470509.4941,
+    "word": "feel",
+    "pos": "v.",
+    "meaning": "感觉；觉得",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fiːl/"
+  },
+  {
+    "id": 1771763470509.5598,
+    "word": "ship",
+    "pos": "n.",
+    "meaning": "船",
+    "type": "word",
+    "bookId": "1771763466873",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ʃɪp/"
+  },
+  {
+    "id": 1771763449561.3962,
+    "word": "Pacific",
+    "pos": "adj.",
+    "meaning": "太平洋的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pəˈsɪfɪk/"
+  },
+  {
+    "id": 1771763449561.888,
+    "word": "guess",
+    "pos": "v.",
+    "meaning": "猜；猜测",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɡɛs/"
+  },
+  {
+    "id": 1771763449561.873,
+    "word": "excited",
+    "pos": "adj.",
+    "meaning": "激动的；兴奋的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɪkˈsaɪtɪd/"
+  },
+  {
+    "id": 1771763449561.1104,
+    "word": "arrive",
+    "pos": "v.",
+    "meaning": "到达",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/əˈɹaɪv/"
+  },
+  {
+    "id": 1771763449561.6372,
+    "word": "relax",
+    "pos": "v.",
+    "meaning": "放松",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɹɪˈlæks/"
+  },
+  {
+    "id": 1771763449561.085,
+    "word": "world-famous",
+    "pos": "adj.",
+    "meaning": "举世闻名的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763449561.8547,
+    "word": "french",
+    "pos": "adj.",
+    "meaning": "法国的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fɹɛnt͡ʃ/"
+  },
+  {
+    "id": 1771763449561.2283,
+    "word": "sell",
+    "pos": "v.",
+    "meaning": "卖；出售",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/sɛl/"
+  },
+  {
+    "id": 1771763449561.2766,
+    "word": "top",
+    "pos": "n.",
+    "meaning": "顶端",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/tɒp/"
+  },
+  {
+    "id": 1771763449561.8828,
+    "word": "till",
+    "pos": "conj.",
+    "meaning": "直到…为止",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/tɪl/"
+  },
+  {
+    "id": 1771763449561.5986,
+    "word": "light",
+    "pos": "n.",
+    "meaning": "电灯",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/lʌɪt/"
+  },
+  {
+    "id": 1771763449561.025,
+    "word": "on",
+    "pos": "adv.",
+    "meaning": "在使用中；开着的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɒn/"
+  },
+  {
+    "id": 1771763449561.1594,
+    "word": "wonderful",
+    "pos": "adj.",
+    "meaning": "绝妙的；了不起的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈwʌn.də.fl/"
+  },
+  {
+    "id": 1771763449561.614,
+    "word": "palace",
+    "pos": "n.",
+    "meaning": "宫殿",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpæləs/"
+  },
+  {
+    "id": 1771763449561.1558,
+    "word": "bow",
+    "pos": "v.",
+    "meaning": "鞠躬;弯腰",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bəʊ/"
+  },
+  {
+    "id": 1771763449561.9807,
+    "word": "kiss",
+    "pos": "v. & n.",
+    "meaning": "吻;亲吻",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/kɪs/"
+  },
+  {
+    "id": 1771763449561.5156,
+    "word": "shake",
+    "pos": "v.",
+    "meaning": "(shook)摇晃",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈʃeɪk/"
+  },
+  {
+    "id": 1771763449561.1335,
+    "word": "smile",
+    "pos": "v. & n.",
+    "meaning": "微笑",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsmaɪ.əl/"
+  },
+  {
+    "id": 1771763449561.7917,
+    "word": "British",
+    "pos": "adj.",
+    "meaning": "英国的;英国人的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763449561.0842,
+    "word": "German",
+    "pos": "n. / adj.",
+    "meaning": "德国人;德语 / 德国的;德国人的;德语的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈd͡ʒɜː.mən/"
+  },
+  {
+    "id": 1771763449561.9998,
+    "word": "Japanese",
+    "pos": "n. / adj.",
+    "meaning": "日本人;日语 / 日本的;日语的;日本人的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763449561.4587,
+    "word": "Russian",
+    "pos": "n. / adj.",
+    "meaning": "俄罗斯人;俄语 / 俄罗斯的;俄罗斯人的;俄语的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763449561.5295,
+    "word": "visitor",
+    "pos": "n.",
+    "meaning": "游客;观光者",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈvɪzɪtə/"
+  },
+  {
+    "id": 1771763449561.4348,
+    "word": "Russia",
+    "pos": "n.",
+    "meaning": "俄罗斯",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763449561.2373,
+    "word": "what",
+    "pos": "int.",
+    "meaning": "什么(表示惊奇)",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wɔt/"
+  },
+  {
+    "id": 1771763449561.7925,
+    "word": "nod",
+    "pos": "v.",
+    "meaning": "点(头)",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/nɔd/"
+  },
+  {
+    "id": 1771763449561.7036,
+    "word": "head",
+    "pos": "n.",
+    "meaning": "头;头部",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/hɛd/"
+  },
+  {
+    "id": 1771763449561.1287,
+    "word": "hug",
+    "pos": "v.",
+    "meaning": "拥抱;紧抱",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/hʌɡ/"
+  },
+  {
+    "id": 1771763449561.4236,
+    "word": "each",
+    "pos": "pron.",
+    "meaning": "各个;每个",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/iːt͡ʃ/"
+  },
+  {
+    "id": 1771763449561.4902,
+    "word": "India",
+    "pos": "n.",
+    "meaning": "印度",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763449561.3765,
+    "word": "together",
+    "pos": "adv.",
+    "meaning": "一起;共同",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/təˈɡɛð.ə(ɹ)/"
+  },
+  {
+    "id": 1771763449561.517,
+    "word": "Maori",
+    "pos": "adj.",
+    "meaning": "毛利人的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763449561.8572,
+    "word": "touch",
+    "pos": "v.",
+    "meaning": "触摸;接触",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763449561.722,
+    "word": "nose",
+    "pos": "n.",
+    "meaning": "鼻子",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/nəʊz/"
+  },
+  {
+    "id": 1771763449561.3425,
+    "word": "finger",
+    "pos": "n.",
+    "meaning": "手指",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfɪŋəɹ/"
+  },
+  {
+    "id": 1771763449561.7268,
+    "word": "foot",
+    "pos": "n.",
+    "meaning": "(pl. feet)脚;足",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "[fʊt̚]"
+  },
+  {
+    "id": 1771763449561.4624,
+    "word": "knee",
+    "pos": "n.",
+    "meaning": "膝盖",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/niː/"
+  },
+  {
+    "id": 1771763449561.492,
+    "word": "leg",
+    "pos": "n.",
+    "meaning": "腿",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/leɪɡ/"
+  },
+  {
+    "id": 1771763449561.4458,
+    "word": "mouth",
+    "pos": "n.",
+    "meaning": "嘴;口",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/mʌʊθ/"
+  },
+  {
+    "id": 1771763449561.8022,
+    "word": "body",
+    "pos": "n.",
+    "meaning": "身体;躯干",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈbɒdi/"
+  },
+  {
+    "id": 1771763449561.3955,
+    "word": "foreign",
+    "pos": "adj.",
+    "meaning": "外国的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfɒɹən/"
+  },
+  {
+    "id": 1771763449561.7424,
+    "word": "personal",
+    "pos": "adj.",
+    "meaning": "个人的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpɜː.sən.əl/"
+  },
+  {
+    "id": 1771763449561.2817,
+    "word": "arm",
+    "pos": "n.",
+    "meaning": "臂",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɑːm/"
+  },
+  {
+    "id": 1771763449561.7783,
+    "word": "hold",
+    "pos": "v.",
+    "meaning": "握着",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/həʊld/"
+  },
+  {
+    "id": 1771763449561.16,
+    "word": "move",
+    "pos": "v.",
+    "meaning": "移动",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/muːv/"
+  },
+  {
+    "id": 1771763449561.4077,
+    "word": "polite",
+    "pos": "adj.",
+    "meaning": "礼貌的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pəˈlaɪt/"
+  },
+  {
+    "id": 1771763449561.7717,
+    "word": "somewhere",
+    "pos": "adv.",
+    "meaning": "某处；某个地方",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsʌm.hweːɹ/"
+  },
+  {
+    "id": 1771763449561.9004,
+    "word": "wave",
+    "pos": "v.",
+    "meaning": "挥手；招手",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/weɪv/"
+  },
+  {
+    "id": 1771763449561.4734,
+    "word": "fact",
+    "pos": "n.",
+    "meaning": "事实；细节",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fækt/"
+  },
+  {
+    "id": 1771763449561.2932,
+    "word": "rude",
+    "pos": "adj.",
+    "meaning": "粗鲁的；无礼的",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɹʉːd/"
+  },
+  {
+    "id": 1771763449561.252,
+    "word": "bring",
+    "pos": "v.",
+    "meaning": "带来",
+    "type": "word",
+    "bookId": "1771763446094",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈbɹɪŋ/"
+  },
+  {
+    "id": 1771763437053.4148,
+    "word": "March",
+    "pos": "n.",
+    "meaning": "3月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/mɑːtʃ/"
+  },
+  {
+    "id": 1771763437053.536,
+    "word": "April",
+    "pos": "n.",
+    "meaning": "4月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763437053.6653,
+    "word": "June",
+    "pos": "n.",
+    "meaning": "6月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763437053.514,
+    "word": "July",
+    "pos": "n.",
+    "meaning": "7月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763437053.8684,
+    "word": "August",
+    "pos": "n.",
+    "meaning": "8月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɔːˈɡʌst/"
+  },
+  {
+    "id": 1771763437053.8213,
+    "word": "September",
+    "pos": "n.",
+    "meaning": "9月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763437053.2285,
+    "word": "October",
+    "pos": "n.",
+    "meaning": "10月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763437053.5432,
+    "word": "November",
+    "pos": "n.",
+    "meaning": "11月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763437053.471,
+    "word": "December",
+    "pos": "n.",
+    "meaning": "12月",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763437053.5815,
+    "word": "writer",
+    "pos": "n.",
+    "meaning": "作家",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɹaɪ.tə/"
+  },
+  {
+    "id": 1771763437053.9678,
+    "word": "real",
+    "pos": "adj.",
+    "meaning": "真实的;真正的",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɹiːl/"
+  },
+  {
+    "id": 1771763437053.7744,
+    "word": "newspaper",
+    "pos": "n.",
+    "meaning": "报纸",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈnjuːsˌpeɪpə/"
+  },
+  {
+    "id": 1771763437053.3176,
+    "word": "exact",
+    "pos": "adj.",
+    "meaning": "准确的;确切的",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɪɡˈzækt/"
+  },
+  {
+    "id": 1771763437053.2253,
+    "word": "date",
+    "pos": "n.",
+    "meaning": "日期",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/deɪt/"
+  },
+  {
+    "id": 1771763437053.5347,
+    "word": "become",
+    "pos": "v.",
+    "meaning": "(became)成为",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bəˈkʊm/"
+  },
+  {
+    "id": 1771763437053.8772,
+    "word": "play",
+    "pos": "n.",
+    "meaning": "剧本;戏剧",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pleɪ/"
+  },
+  {
+    "id": 1771763437053.2795,
+    "word": "poem",
+    "pos": "n.",
+    "meaning": "诗歌",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpoʊ̯ɪm/"
+  },
+  {
+    "id": 1771763437053.7842,
+    "word": "marry",
+    "pos": "v.",
+    "meaning": "结婚",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈmæɹɪ/"
+  },
+  {
+    "id": 1771763437053.8918,
+    "word": "successful",
+    "pos": "adj.",
+    "meaning": "成功的",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/səkˈsɛsfl̩/"
+  },
+  {
+    "id": 1771763437053.7058,
+    "word": "work",
+    "pos": "n.",
+    "meaning": "作品；著作",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wɜːk/"
+  },
+  {
+    "id": 1771763437053.0703,
+    "word": "build",
+    "pos": "v.",
+    "meaning": "建造",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bɪld/"
+  },
+  {
+    "id": 1771763437053.55,
+    "word": "fire",
+    "pos": "n.",
+    "meaning": "火，火灾",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfɑeə(ɹ)/"
+  },
+  {
+    "id": 1771763437053.9062,
+    "word": "die",
+    "pos": "v.",
+    "meaning": "死；去世",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/daɪ/"
+  },
+  {
+    "id": 1771763437053.042,
+    "word": "rich",
+    "pos": "adj.",
+    "meaning": "富有的",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɹɪt͡ʃ/"
+  },
+  {
+    "id": 1771763437053.5232,
+    "word": "language",
+    "pos": "n.",
+    "meaning": "语言",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "[ˈleɪŋɡwɪd͡ʒ]"
+  },
+  {
+    "id": 1771763437053.9087,
+    "word": "young",
+    "pos": "adj.",
+    "meaning": "年轻的",
+    "type": "word",
+    "bookId": "1771763432646",
+    "addedAt": "2026-02-22",
+    "phonetic": "/jʌŋ/"
+  },
+  {
+    "id": 1771763422466.2092,
+    "word": "hair",
+    "pos": "n.",
+    "meaning": "头发",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/heː/"
+  },
+  {
+    "id": 1771763422466.2036,
+    "word": "gold",
+    "pos": "n.",
+    "meaning": "金色;黄金;金牌",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɡɒʊld/"
+  },
+  {
+    "id": 1771763422466.9463,
+    "word": "forest",
+    "pos": "n.",
+    "meaning": "森林",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfɒɹɪst/"
+  },
+  {
+    "id": 1771763422466.8286,
+    "word": "once",
+    "pos": "adv.",
+    "meaning": "一次;一回",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wɒn(t)s/"
+  },
+  {
+    "id": 1771763422466.9473,
+    "word": "upon",
+    "pos": "prep.",
+    "meaning": "在...上;到......上",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/əˈpɒn/"
+  },
+  {
+    "id": 1771763422466.4375,
+    "word": "decide",
+    "pos": "v.",
+    "meaning": "决定",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/dɪˈsaɪd/"
+  },
+  {
+    "id": 1771763422466.6477,
+    "word": "basket",
+    "pos": "n.",
+    "meaning": "篮子",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈbaːskət/"
+  },
+  {
+    "id": 1771763422466.1292,
+    "word": "notice",
+    "pos": "v.",
+    "meaning": "注意到",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈnəʊtɪs/"
+  },
+  {
+    "id": 1771763422466.8894,
+    "word": "dark",
+    "pos": "adj.",
+    "meaning": "黑暗的",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/dɑːk/"
+  },
+  {
+    "id": 1771763422466.54,
+    "word": "pick",
+    "pos": "v.",
+    "meaning": "采;摘",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pɪk/"
+  },
+  {
+    "id": 1771763422466.792,
+    "word": "soon",
+    "pos": "adv.",
+    "meaning": "立刻;不久",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/suːn/"
+  },
+  {
+    "id": 1771763422466.7712,
+    "word": "lost",
+    "pos": "adj.",
+    "meaning": "迷路的",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/lɒst/"
+  },
+  {
+    "id": 1771763422466.8645,
+    "word": "around",
+    "pos": "prep.",
+    "meaning": "环绕着",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/əˈɹaʊnd/"
+  },
+  {
+    "id": 1771763422466.134,
+    "word": "little",
+    "pos": "adj.",
+    "meaning": "小的",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈlɪ.ɾɫ̩/"
+  },
+  {
+    "id": 1771763422466.7844,
+    "word": "towards",
+    "pos": "prep.",
+    "meaning": "往;向;朝......方向",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/tɘˈwoːdz/"
+  },
+  {
+    "id": 1771763422466.7036,
+    "word": "knock",
+    "pos": "v.",
+    "meaning": "敲",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/nɒk/"
+  },
+  {
+    "id": 1771763422466.9365,
+    "word": "door",
+    "pos": "n.",
+    "meaning": "门",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/dɔː/"
+  },
+  {
+    "id": 1771763422466.0496,
+    "word": "answer",
+    "pos": "v.",
+    "meaning": "应门;回答",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈan.sə/"
+  },
+  {
+    "id": 1771763422466.891,
+    "word": "push",
+    "pos": "v.",
+    "meaning": "推",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "[pʷʊʃ]"
+  },
+  {
+    "id": 1771763422466.235,
+    "word": "enter",
+    "pos": "v.",
+    "meaning": "进入",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɛntə(ɹ)/"
+  },
+  {
+    "id": 1771763422466.325,
+    "word": "bowl",
+    "pos": "n.",
+    "meaning": "碗",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bəʊɫ/"
+  },
+  {
+    "id": 1771763422466.1616,
+    "word": "hungry",
+    "pos": "adj.",
+    "meaning": "感到饿的;饥饿的",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈhʌŋ.ɡɹi/"
+  },
+  {
+    "id": 1771763422466.2737,
+    "word": "right",
+    "pos": "adj.",
+    "meaning": "合适的;恰当的",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɹaɪt/"
+  },
+  {
+    "id": 1771763422466.2268,
+    "word": "finish",
+    "pos": "v.",
+    "meaning": "吃完;喝完;用尽",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfɪnɪʃ/"
+  },
+  {
+    "id": 1771763422466.2524,
+    "word": "either",
+    "pos": "adv.",
+    "meaning": "也(不)",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈaɪð.ə(ɹ)/"
+  },
+  {
+    "id": 1771763422466.7725,
+    "word": "piece",
+    "pos": "n.",
+    "meaning": "部件;碎片;一件/个/张",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/piːs/"
+  },
+  {
+    "id": 1771763422466.435,
+    "word": "asleep",
+    "pos": "adj.",
+    "meaning": "睡着的",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/əˈsliːp/"
+  },
+  {
+    "id": 1771763422466.184,
+    "word": "return",
+    "pos": "v.",
+    "meaning": "返回;归还",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɹɪˈtɜːn/"
+  },
+  {
+    "id": 1771763422466.4233,
+    "word": "cry",
+    "pos": "v.",
+    "meaning": "哭;喊叫",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/kɹaɪ̯/"
+  },
+  {
+    "id": 1771763422466.1033,
+    "word": "point",
+    "pos": "v.",
+    "meaning": "指向;指",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pɔɪnt/"
+  },
+  {
+    "id": 1771763422466.0598,
+    "word": "shout",
+    "pos": "v.",
+    "meaning": "高声说;大声喊",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ʃaʊt/"
+  },
+  {
+    "id": 1771763422466.169,
+    "word": "jump",
+    "pos": "v.",
+    "meaning": "跳",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/dʒʌmp/"
+  },
+  {
+    "id": 1771763422466.2415,
+    "word": "without",
+    "pos": "prep.",
+    "meaning": "无;没有",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wɪθˈʌʊt/"
+  },
+  {
+    "id": 1771763422466.319,
+    "word": "part",
+    "pos": "n.",
+    "meaning": "部分;地区;地方",
+    "type": "word",
+    "bookId": "1771763419110",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pɐːt/"
+  },
+  {
+    "id": 1771763411414.2766,
+    "word": "born",
+    "pos": "adj.",
+    "meaning": "(动词bear的过去分词)出生",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈbɔːn/"
+  },
+  {
+    "id": 1771763411414.5078,
+    "word": "strict",
+    "pos": "adj.",
+    "meaning": "严格的;严厉的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/stɹɪkt/"
+  },
+  {
+    "id": 1771763411414.9119,
+    "word": "friendly",
+    "pos": "adj.",
+    "meaning": "友好的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfɹɛndli/"
+  },
+  {
+    "id": 1771763411414.4104,
+    "word": "primary",
+    "pos": "adj.",
+    "meaning": "初等的;初级的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpɹɒeməɹi/"
+  },
+  {
+    "id": 1771763411414.2588,
+    "word": "town",
+    "pos": "n.",
+    "meaning": "城镇;市镇",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/taʊn/"
+  },
+  {
+    "id": 1771763411414.025,
+    "word": "hey",
+    "pos": "int.",
+    "meaning": "嘿;喂",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/heɪ/"
+  },
+  {
+    "id": 1771763411414.399,
+    "word": "village",
+    "pos": "n.",
+    "meaning": "村庄",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈvɪlɪd͡ʒ/"
+  },
+  {
+    "id": 1771763411414.7888,
+    "word": "nice",
+    "pos": "adj.",
+    "meaning": "友好的;亲切的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/naɪs/"
+  },
+  {
+    "id": 1771763411414.0352,
+    "word": "good",
+    "pos": "adj.",
+    "meaning": "乖的;守规矩的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɡʊ(d)/"
+  },
+  {
+    "id": 1771763411414.9592,
+    "word": "difficult",
+    "pos": "adj.",
+    "meaning": "难对付的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈdɪfɪkəlt/"
+  },
+  {
+    "id": 1771763411414.2473,
+    "word": "bathroom",
+    "pos": "n.",
+    "meaning": "浴室",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈbæθ.ɹuːm/"
+  },
+  {
+    "id": 1771763411414.0337,
+    "word": "bedroom",
+    "pos": "n.",
+    "meaning": "卧室",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈbɛdɹʊm/"
+  },
+  {
+    "id": 1771763411414.7744,
+    "word": "garden",
+    "pos": "n.",
+    "meaning": "花园",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɡɑːdn̩/"
+  },
+  {
+    "id": 1771763411414.035,
+    "word": "east",
+    "pos": "adj. / n.",
+    "meaning": "东面的;东部的 / 东方",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/iːst/"
+  },
+  {
+    "id": 1771763411414.2793,
+    "word": "coast",
+    "pos": "n.",
+    "meaning": "海岸",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/kəʊst/"
+  },
+  {
+    "id": 1771763411414.0222,
+    "word": "ago",
+    "pos": "adv.",
+    "meaning": "以前",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/əˈɡəʊ/"
+  },
+  {
+    "id": 1771763411414.541,
+    "word": "store",
+    "pos": "n.",
+    "meaning": "商店",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/stɔː/"
+  },
+  {
+    "id": 1771763411414.7822,
+    "word": "bored",
+    "pos": "adj.",
+    "meaning": "厌烦的;厌倦的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bɔːd/"
+  },
+  {
+    "id": 1771763411414.6165,
+    "word": "president",
+    "pos": "n.",
+    "meaning": "总统",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpɹɛzɨdənt/"
+  },
+  {
+    "id": 1771763411414.4854,
+    "word": "comfortable",
+    "pos": "adj.",
+    "meaning": "舒适的;舒服的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈkʌm.fə.tə.bəl/"
+  },
+  {
+    "id": 1771763411414.6714,
+    "word": "lake",
+    "pos": "n.",
+    "meaning": "湖",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/leɪk/"
+  },
+  {
+    "id": 1771763411414.248,
+    "word": "last",
+    "pos": "adj.",
+    "meaning": "(星期、月份等)最近过去的,紧接现在前面的",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/last/"
+  },
+  {
+    "id": 1771763411414.113,
+    "word": "yesterday",
+    "pos": "adv.",
+    "meaning": "(在)昨天",
+    "type": "word",
+    "bookId": "1771763404272",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈjɛstədeɪ/"
+  },
+  {
+    "id": 1771763395790.8904,
+    "word": "bank",
+    "pos": "n.",
+    "meaning": "银行",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bæŋk/"
+  },
+  {
+    "id": 1771763395790.5613,
+    "word": "museum",
+    "pos": "n.",
+    "meaning": "博物馆",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/mjuːˈziːəm/"
+  },
+  {
+    "id": 1771763395790.3135,
+    "word": "along",
+    "pos": "prep.",
+    "meaning": "沿着",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/əˈlɑŋ/"
+  },
+  {
+    "id": 1771763395790.4617,
+    "word": "across",
+    "pos": "prep.",
+    "meaning": "越过",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/əˈkɹɑs/"
+  },
+  {
+    "id": 1771763395790.2837,
+    "word": "cross",
+    "pos": "v.",
+    "meaning": "穿过",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/kɹɑs/"
+  },
+  {
+    "id": 1771763395790.6584,
+    "word": "opposite",
+    "pos": "prep.",
+    "meaning": "在......的对面",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɒpəsɪt/"
+  },
+  {
+    "id": 1771763395790.164,
+    "word": "tourist",
+    "pos": "n.",
+    "meaning": "游客",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈtʊəɹɪst/"
+  },
+  {
+    "id": 1771763395790.9263,
+    "word": "excuse",
+    "pos": "v.",
+    "meaning": "原谅;谅解",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763395790.0413,
+    "word": "street",
+    "pos": "n.",
+    "meaning": "街道",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/stɹiːt/"
+  },
+  {
+    "id": 1771763395790.2686,
+    "word": "turn",
+    "pos": "v.",
+    "meaning": "换方向",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/tɜːn/"
+  },
+  {
+    "id": 1771763395790.3374,
+    "word": "third",
+    "pos": "num.",
+    "meaning": "第三",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/θɜːd/"
+  },
+  {
+    "id": 1771763395790.6133,
+    "word": "guidebook",
+    "pos": "n.",
+    "meaning": "导游手册;旅行指南",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763395790.9255,
+    "word": "bookshop",
+    "pos": "n.",
+    "meaning": "书店",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763395790.7234,
+    "word": "right",
+    "pos": "int.",
+    "meaning": "好了(用于变换话题或活动);是的;好",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɹaɪt/"
+  },
+  {
+    "id": 1771763395790.47,
+    "word": "could",
+    "pos": "v. aux.",
+    "meaning": "可以;能",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/kʊd/"
+  },
+  {
+    "id": 1771763395790.3284,
+    "word": "underground",
+    "pos": "n.",
+    "meaning": "地铁",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈʌndəɡɹaʊnd/"
+  },
+  {
+    "id": 1771763395790.6,
+    "word": "take",
+    "pos": "v.",
+    "meaning": "搭乘;乘坐;固定使用;把(某人)带往;使(某人)到",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/teɪk/"
+  },
+  {
+    "id": 1771763395790.0967,
+    "word": "tour",
+    "pos": "n.",
+    "meaning": "(短期的)参观,游览;旅行",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/tɔː(ɹ)/"
+  },
+  {
+    "id": 1771763395790.9968,
+    "word": "square",
+    "pos": "n.",
+    "meaning": "广场",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/skwɛə(ɹ)/"
+  },
+  {
+    "id": 1771763395790.928,
+    "word": "middle",
+    "pos": "n. / adj.",
+    "meaning": "中部;中间 / 中等的;中部的",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈmɪdəl/"
+  },
+  {
+    "id": 1771763395790.0332,
+    "word": "famous",
+    "pos": "adj.",
+    "meaning": "著名的",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfeɪməs/"
+  },
+  {
+    "id": 1771763395790.237,
+    "word": "painting",
+    "pos": "n.",
+    "meaning": "油画;绘画",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpeɪn.tɪŋ/"
+  },
+  {
+    "id": 1771763395790.1248,
+    "word": "from",
+    "pos": "prep.",
+    "meaning": "从......出发",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fɹɒm/"
+  },
+  {
+    "id": 1771763395790.2017,
+    "word": "metre",
+    "pos": "n.",
+    "meaning": "米",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈmiːtə/"
+  },
+  {
+    "id": 1771763395790.0415,
+    "word": "above",
+    "pos": "prep.",
+    "meaning": "在......上方;在......之上",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/əˈbʌv/"
+  },
+  {
+    "id": 1771763395790.272,
+    "word": "river",
+    "pos": "n.",
+    "meaning": "河;江",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɹɪvə/"
+  },
+  {
+    "id": 1771763395790.1816,
+    "word": "clear",
+    "pos": "adj.",
+    "meaning": "(天气)晴朗的",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/klɪə(ɹ)/"
+  },
+  {
+    "id": 1771763395790.086,
+    "word": "bridge",
+    "pos": "n.",
+    "meaning": "桥",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/bɹɪd͡ʒ/"
+  },
+  {
+    "id": 1771763395790.2476,
+    "word": "railway",
+    "pos": "n.",
+    "meaning": "铁路",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɹeɪlˌweɪ/"
+  },
+  {
+    "id": 1771763395790.6494,
+    "word": "past",
+    "pos": "prep.",
+    "meaning": "路过(某物或某地);越过",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pɑːst/"
+  },
+  {
+    "id": 1771763395790.9404,
+    "word": "church",
+    "pos": "n.",
+    "meaning": "教堂",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/t͡ʃɜːt͡ʃ/"
+  },
+  {
+    "id": 1771763395790.117,
+    "word": "finish",
+    "pos": "v.",
+    "meaning": "结束;完成",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfɪnɪʃ/"
+  },
+  {
+    "id": 1771763395790.7483,
+    "word": "high",
+    "pos": "adj.",
+    "meaning": "高的",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/haɪ/"
+  },
+  {
+    "id": 1771763395790.383,
+    "word": "up",
+    "pos": "prep.",
+    "meaning": "沿着.......而去.",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ap/"
+  },
+  {
+    "id": 1771763395790.2034,
+    "word": "down",
+    "pos": "prep.",
+    "meaning": "沿着",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/daʊn/"
+  },
+  {
+    "id": 1771763395790.8054,
+    "word": "stop",
+    "pos": "n.",
+    "meaning": "车站",
+    "type": "word",
+    "bookId": "1771763391667",
+    "addedAt": "2026-02-22",
+    "phonetic": "/stɒp/"
+  },
+  {
+    "id": 1771763382683.9438,
+    "word": "market",
+    "pos": "n.",
+    "meaning": "市场",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈmɑːkɪt/"
+  },
+  {
+    "id": 1771763382684.768,
+    "word": "supermarket",
+    "pos": "n.",
+    "meaning": "超市",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˌsuːpəˈmɑːkɪt/"
+  },
+  {
+    "id": 1771763382684.6716,
+    "word": "biscuit",
+    "pos": "n.",
+    "meaning": "饼干",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈbɪskɪt/"
+  },
+  {
+    "id": 1771763382684.7424,
+    "word": "lemon",
+    "pos": "n.",
+    "meaning": "柠檬",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈlɛmən/"
+  },
+  {
+    "id": 1771763382684.8047,
+    "word": "strawberry",
+    "pos": "n.",
+    "meaning": "草莓",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈstɹɔːb(ə)ɹi/"
+  },
+  {
+    "id": 1771763382684.7744,
+    "word": "size",
+    "pos": "n.",
+    "meaning": "尺码;号",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/saɪz/"
+  },
+  {
+    "id": 1771763382684.388,
+    "word": "take",
+    "pos": "v.",
+    "meaning": "(took)穿(某尺寸的衣服或鞋子)",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/teɪk/"
+  },
+  {
+    "id": 1771763382684.9692,
+    "word": "may",
+    "pos": "v. aux.",
+    "meaning": "(might)可以;可能",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/meɪ/"
+  },
+  {
+    "id": 1771763382684.7942,
+    "word": "try",
+    "pos": "v.",
+    "meaning": "尝试;试穿;品尝",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/tɹaɪ/"
+  },
+  {
+    "id": 1771763382684.676,
+    "word": "certainly",
+    "pos": "adv.",
+    "meaning": "当然;行",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsɜːtn̩li/"
+  },
+  {
+    "id": 1771763382684.9316,
+    "word": "sale",
+    "pos": "n.",
+    "meaning": "降价出售",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/seɪl/"
+  },
+  {
+    "id": 1771763382684.2537,
+    "word": "price",
+    "pos": "n.",
+    "meaning": "价格",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pɹaɪs/"
+  },
+  {
+    "id": 1771763382684.4963,
+    "word": "look",
+    "pos": "v.",
+    "meaning": "看起来;显得",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763382684.1353,
+    "word": "fresh",
+    "pos": "adj.",
+    "meaning": "新鲜的",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fɹɛʃ/"
+  },
+  {
+    "id": 1771763382684.5083,
+    "word": "advantage",
+    "pos": "n.",
+    "meaning": "有利条件;优势",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ədˈvɑːn.tɪdʒ/"
+  },
+  {
+    "id": 1771763382684.984,
+    "word": "anyone",
+    "pos": "pron.",
+    "meaning": "任何人",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈæniˌwʌn/"
+  },
+  {
+    "id": 1771763382684.116,
+    "word": "anything",
+    "pos": "pron.",
+    "meaning": "任何东西;任何事情",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɛ.nə.θɪŋ/"
+  },
+  {
+    "id": 1771763382684.5566,
+    "word": "anywhere",
+    "pos": "adv.",
+    "meaning": "在任何地方;往任何地方",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɛn.iː.(h)wɛə(ɹ)/"
+  },
+  {
+    "id": 1771763382684.9082,
+    "word": "compare",
+    "pos": "v.",
+    "meaning": "比较",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/kəmˈpɛə/"
+  },
+  {
+    "id": 1771763382684.9822,
+    "word": "pay",
+    "pos": "v.",
+    "meaning": "支付;付钱",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/peɪ/"
+  },
+  {
+    "id": 1771763382684.921,
+    "word": "post",
+    "pos": "n. & v.",
+    "meaning": "邮寄",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/pəʊst/"
+  },
+  {
+    "id": 1771763382684.3948,
+    "word": "product",
+    "pos": "n.",
+    "meaning": "产品",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpɹɒd.əkt/"
+  },
+  {
+    "id": 1771763382684.207,
+    "word": "receive",
+    "pos": "v.",
+    "meaning": "收到;接到",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɹɪˈsiːv/"
+  },
+  {
+    "id": 1771763382684.4922,
+    "word": "safe",
+    "pos": "adj.",
+    "meaning": "安全的",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/seɪf/"
+  },
+  {
+    "id": 1771763382684.379,
+    "word": "several",
+    "pos": "adj.",
+    "meaning": "几个;一些",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsɛv(ə)ɹəl/"
+  },
+  {
+    "id": 1771763382684.468,
+    "word": "online",
+    "pos": "adj.",
+    "meaning": "在线的",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɒnˈlaɪn/"
+  },
+  {
+    "id": 1771763382684.6555,
+    "word": "shopping",
+    "pos": "n.",
+    "meaning": "购物",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈʃɒpɪŋ/"
+  },
+  {
+    "id": 1771763382684.5454,
+    "word": "way",
+    "pos": "n.",
+    "meaning": "方式;道路",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/weɪ/"
+  },
+  {
+    "id": 1771763382684.043,
+    "word": "almost",
+    "pos": "adv.",
+    "meaning": "几乎;差不多",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɔːl.ˈməʊst/"
+  },
+  {
+    "id": 1771763382684.888,
+    "word": "something",
+    "pos": "pron.",
+    "meaning": "某事物;某种东西",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsamθɪŋ/"
+  },
+  {
+    "id": 1771763382684.6218,
+    "word": "later",
+    "pos": "adv.",
+    "meaning": "后来;以后",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈleɪtə/"
+  },
+  {
+    "id": 1771763382684.4033,
+    "word": "open",
+    "pos": "adj.",
+    "meaning": "营业的;开放的",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈəʊ.pən/"
+  },
+  {
+    "id": 1771763382684.8052,
+    "word": "out",
+    "pos": "adv.",
+    "meaning": "外出;离开",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/æɔt/"
+  },
+  {
+    "id": 1771763382684.0784,
+    "word": "over",
+    "pos": "prep.",
+    "meaning": "通过;超过",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈəʊ.və(ɹ)/"
+  },
+  {
+    "id": 1771763382684.2842,
+    "word": "one",
+    "pos": "pron.",
+    "meaning": "(同一群人或物中)一个",
+    "type": "word",
+    "bookId": "1771763373303",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wan/"
+  },
+  {
+    "id": 1771763364374.3792,
+    "word": "chalk",
+    "pos": "n.",
+    "meaning": "粉笔",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/t͡ʃɔːk/"
+  },
+  {
+    "id": 1771763364374.3567,
+    "word": "ruler",
+    "pos": "n.",
+    "meaning": "直尺",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɹuːlə(ɹ)/"
+  },
+  {
+    "id": 1771763364374.5586,
+    "word": "carry",
+    "pos": "v.",
+    "meaning": "拿；带",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈkæ.ɹi/"
+  },
+  {
+    "id": 1771763364374.1848,
+    "word": "change",
+    "pos": "v./n.",
+    "meaning": "改变；变化",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/tʃeɪndʒ/"
+  },
+  {
+    "id": 1771763364374.4822,
+    "word": "everything",
+    "pos": "pron.",
+    "meaning": "每样事物",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɛvɹiθɪŋ/"
+  },
+  {
+    "id": 1771763364374.8337,
+    "word": "future",
+    "pos": "n.",
+    "meaning": "将来",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfjuːt͡ʃə/"
+  },
+  {
+    "id": 1771763364374.069,
+    "word": "life",
+    "pos": "n.",
+    "meaning": "生活；生命",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/laɪf/"
+  },
+  {
+    "id": 1771763364374.9104,
+    "word": "need",
+    "pos": "v.",
+    "meaning": "需要",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/niːd/"
+  },
+  {
+    "id": 1771763364374.533,
+    "word": "will",
+    "pos": "v.",
+    "meaning": "将；将要；将来",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wɪl/"
+  },
+  {
+    "id": 1771763364374.284,
+    "word": "maybe",
+    "pos": "adv.",
+    "meaning": "也许",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈmeɪbi/"
+  },
+  {
+    "id": 1771763364374.78,
+    "word": "ask",
+    "pos": "v.",
+    "meaning": "询问",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈask/"
+  },
+  {
+    "id": 1771763364374.6323,
+    "word": "question",
+    "pos": "n.",
+    "meaning": "问题",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈkwɛstjən/"
+  },
+  {
+    "id": 1771763364374.25,
+    "word": "by",
+    "pos": "prep.",
+    "meaning": "用；靠",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/baɪ/"
+  },
+  {
+    "id": 1771763364374.9937,
+    "word": "level",
+    "pos": "n.",
+    "meaning": "水平",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈlɛv.əl/"
+  },
+  {
+    "id": 1771763364374.0261,
+    "word": "able",
+    "pos": "adj.",
+    "meaning": "能够….的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈeɪ.bl̩/"
+  },
+  {
+    "id": 1771763364374.4897,
+    "word": "more",
+    "pos": "adv.",
+    "meaning": "更加",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈmɔː/"
+  },
+  {
+    "id": 1771763364374.3896,
+    "word": "free",
+    "pos": "adj.",
+    "meaning": "空闲的；空余的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fɹiː/"
+  },
+  {
+    "id": 1771763364374.2048,
+    "word": "air",
+    "pos": "n.",
+    "meaning": "天空；空中；空气",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɛə/"
+  },
+  {
+    "id": 1771763364374.9414,
+    "word": "land",
+    "pos": "n.",
+    "meaning": "陆地",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/lænd/"
+  },
+  {
+    "id": 1771763364374.8555,
+    "word": "machine",
+    "pos": "n.",
+    "meaning": "机器",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/məˈʃin/"
+  },
+  {
+    "id": 1771763364374.0027,
+    "word": "ramin",
+    "pos": "v./n.",
+    "meaning": "雨；雨水",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763364374.551,
+    "word": "robot",
+    "pos": "n.",
+    "meaning": "机器人",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɹoʊbət/"
+  },
+  {
+    "id": 1771763364374.1526,
+    "word": "sea",
+    "pos": "n.",
+    "meaning": "海;海洋",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/siː/"
+  },
+  {
+    "id": 1771763364374.3997,
+    "word": "space",
+    "pos": "n.",
+    "meaning": "太空;空间",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/speɪs/"
+  },
+  {
+    "id": 1771763364374.5007,
+    "word": "traffic",
+    "pos": "n.",
+    "meaning": "交通",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈtɹæfɪk/"
+  },
+  {
+    "id": 1771763364374.5435,
+    "word": "jam",
+    "pos": "n.",
+    "meaning": "堵塞;拥挤",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈdʒæːm/"
+  },
+  {
+    "id": 1771763364374.1821,
+    "word": "car",
+    "pos": "n.",
+    "meaning": "汽车;轿车",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/kɑː/"
+  },
+  {
+    "id": 1771763364374.0476,
+    "word": "true",
+    "pos": "adj.",
+    "meaning": "真的;真实的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/tɹuː/"
+  },
+  {
+    "id": 1771763364374.0745,
+    "word": "bicycle",
+    "pos": "n.",
+    "meaning": "自行车",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈbaɪsɪkl̩/"
+  },
+  {
+    "id": 1771763364374.1821,
+    "word": "car",
+    "pos": "n.",
+    "meaning": "汽车;轿车",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763364374.476,
+    "word": "cheap",
+    "pos": "adj.",
+    "meaning": "便宜的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/t͡ʃiːp/"
+  },
+  {
+    "id": 1771763364374.5623,
+    "word": "everywhere",
+    "pos": "adv.",
+    "meaning": "到处;处处",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɛv.ɹi.(h)weə(ɹ)/"
+  },
+  {
+    "id": 1771763364374.65,
+    "word": "into",
+    "pos": "prep.",
+    "meaning": "进入......里面",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɪn.tuː/"
+  },
+  {
+    "id": 1771763364374.1807,
+    "word": "long",
+    "pos": "adj.",
+    "meaning": "长的;长时间的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈlɔːŋ/"
+  },
+  {
+    "id": 1771763364374.4226,
+    "word": "heavy",
+    "pos": "adj.",
+    "meaning": "繁重的;沉的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈhe.vi/"
+  },
+  {
+    "id": 1771763364374.473,
+    "word": "light",
+    "pos": "adj.",
+    "meaning": "轻的;轻松的;少量的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/lʌɪt/"
+  },
+  {
+    "id": 1771763364374.364,
+    "word": "easy",
+    "pos": "adj.",
+    "meaning": "容易的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈiːzi/"
+  },
+  {
+    "id": 1771763364374.3381,
+    "word": "working",
+    "pos": "adj.",
+    "meaning": "(有关)工作的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈwɜːkɪŋ/"
+  },
+  {
+    "id": 1771763364374.488,
+    "word": "hour",
+    "pos": "n.",
+    "meaning": "小时",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈaʊɚ/"
+  },
+  {
+    "id": 1771763364374.477,
+    "word": "short",
+    "pos": "adj.",
+    "meaning": "短的;短暂的;矮的",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ʃoːt/"
+  },
+  {
+    "id": 1771763364374.4612,
+    "word": "rise",
+    "pos": "v.",
+    "meaning": "(rose)升起;上升",
+    "type": "word",
+    "bookId": "1771763358934",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɹaɪs/"
+  },
+  {
+    "id": 1771763349291.646,
+    "word": "picnic",
+    "pos": "n.",
+    "meaning": "野餐",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpɪknɪk/"
+  },
+  {
+    "id": 1771763349291.161,
+    "word": "housework",
+    "pos": "n.",
+    "meaning": "家务劳动",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763349291.2053,
+    "word": "on",
+    "pos": "prep.",
+    "meaning": "在......时候",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɒn/"
+  },
+  {
+    "id": 1771763349291.7297,
+    "word": "else",
+    "pos": "adv.",
+    "meaning": "其他;另外",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ɛls/"
+  },
+  {
+    "id": 1771763349291.75,
+    "word": "nobody",
+    "pos": "pron.",
+    "meaning": "没有人",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈnəʊ.bɒ.di/"
+  },
+  {
+    "id": 1771763349291.5627,
+    "word": "at",
+    "pos": "prep.",
+    "meaning": "在......点钟",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763349291.3726,
+    "word": "nothing",
+    "pos": "pron.",
+    "meaning": "没有什么;没有东西",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈnʌθɪŋ/"
+  },
+  {
+    "id": 1771763349291.6384,
+    "word": "silly",
+    "pos": "adj.",
+    "meaning": "愚蠢的;傻气的",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsɪli/"
+  },
+  {
+    "id": 1771763349291.259,
+    "word": "fantastic",
+    "pos": "adj.",
+    "meaning": "极好的",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fænˈtæstɪk/"
+  },
+  {
+    "id": 1771763349291.1458,
+    "word": "forward",
+    "pos": "adv.",
+    "meaning": "面向未来的;向前",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈfoːwəd/"
+  },
+  {
+    "id": 1771763349291.5957,
+    "word": "fan",
+    "pos": "n.",
+    "meaning": "迷;支持者",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fæn/"
+  },
+  {
+    "id": 1771763349291.0864,
+    "word": "shirt",
+    "pos": "n.",
+    "meaning": "球衣;(男式)衬衫",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ʃɜːt/"
+  },
+  {
+    "id": 1771763349291.938,
+    "word": "cheer",
+    "pos": "v.",
+    "meaning": "为......喝彩",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/t͡ʃɪə(ɹ)/"
+  },
+  {
+    "id": 1771763349291.6375,
+    "word": "player",
+    "pos": "n.",
+    "meaning": "运动员;选手",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈpleɪə(ɹ)/"
+  },
+  {
+    "id": 1771763349291.1309,
+    "word": "hope",
+    "pos": "v.",
+    "meaning": "希望",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/həʊp/"
+  },
+  {
+    "id": 1771763349291.209,
+    "word": "win",
+    "pos": "v.",
+    "meaning": "赢;获胜",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wɪn/"
+  },
+  {
+    "id": 1771763349291.6501,
+    "word": "myself",
+    "pos": "pron.",
+    "meaning": "我自己",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/maɪˈsɛlf/"
+  },
+  {
+    "id": 1771763349291.896,
+    "word": "during",
+    "pos": "prep.",
+    "meaning": "在.......期间",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈdjɔː.ɹɪŋ/"
+  },
+  {
+    "id": 1771763349291.681,
+    "word": "May",
+    "pos": "n.",
+    "meaning": "5月",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/meɪ/"
+  },
+  {
+    "id": 1771763349291.2847,
+    "word": "late",
+    "pos": "adv. / adj.",
+    "meaning": "迟;晚 / 迟的;晚的",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/leɪt/"
+  },
+  {
+    "id": 1771763349291.466,
+    "word": "walk",
+    "pos": "n.",
+    "meaning": "步行;走",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/wɔːk/"
+  },
+  {
+    "id": 1771763349291.0742,
+    "word": "country",
+    "pos": "n.",
+    "meaning": "乡下;乡村",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈkɐntɹi/"
+  },
+  {
+    "id": 1771763349291.7969,
+    "word": "second",
+    "pos": "num.",
+    "meaning": "第二",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈsɛkɪnd/"
+  },
+  {
+    "id": 1771763349291.388,
+    "word": "collect",
+    "pos": "v.",
+    "meaning": "收集",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/kəˈlɛkt/"
+  },
+  {
+    "id": 1771763349291.8706,
+    "word": "litter",
+    "pos": "n.",
+    "meaning": "垃圾",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈlɪtə(ɹ)/"
+  },
+  {
+    "id": 1771763349291.4578,
+    "word": "fun",
+    "pos": "n.",
+    "meaning": "娱乐;乐趣",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/fʊn/"
+  },
+  {
+    "id": 1771763349291.7515,
+    "word": "camp",
+    "pos": "n.",
+    "meaning": "营地;帐篷",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "[kʰɛəmp]"
+  },
+  {
+    "id": 1771763349291.4058,
+    "word": "Australian",
+    "pos": "adj.",
+    "meaning": "澳大利亚的",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763349291.0618,
+    "word": "sightseeing",
+    "pos": "n.",
+    "meaning": "观光;游览",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22"
+  },
+  {
+    "id": 1771763349291.1616,
+    "word": "beach",
+    "pos": "n.",
+    "meaning": "海滨;海滩",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/biːt͡ʃ/"
+  },
+  {
+    "id": 1771763349291.2175,
+    "word": "early",
+    "pos": "adv. / adj.",
+    "meaning": "早;提前 / 早的",
+    "type": "word",
+    "bookId": "1771763338594",
+    "addedAt": "2026-02-22",
+    "phonetic": "/ˈɜː.li/"
+  },
+  {
     "id": 1771682255444.4153,
     "word": "play",
     "pos": "v.",
     "meaning": "演奏;弹奏",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/pleɪ/"
   },
   {
     "id": 1771682255444.578,
@@ -15,7 +3078,8 @@
     "meaning": "网球",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈtɛn.ɪs/"
   },
   {
     "id": 1771682255444.9216,
@@ -24,7 +3088,8 @@
     "meaning": "钢琴",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/piˈænoʊ/"
   },
   {
     "id": 1771682255444.4094,
@@ -33,7 +3098,8 @@
     "meaning": "骑;乘",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ɹaɪd/"
   },
   {
     "id": 1771682255444.4624,
@@ -42,7 +3108,8 @@
     "meaning": "俱乐部",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/klʌb/"
   },
   {
     "id": 1771682255444.312,
@@ -51,7 +3118,8 @@
     "meaning": "学期",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/tɜːm/"
   },
   {
     "id": 1771682255444.2253,
@@ -60,7 +3128,8 @@
     "meaning": "布告栏",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/bɔːd/"
   },
   {
     "id": 1771682255444.4224,
@@ -69,7 +3138,8 @@
     "meaning": "噢;呢",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/wɛl/"
   },
   {
     "id": 1771682255444.2244,
@@ -78,7 +3148,8 @@
     "meaning": "所有的;全部的",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ɔːl/"
   },
   {
     "id": 1771682255444.0537,
@@ -87,7 +3158,8 @@
     "meaning": "焦虑;担心",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈwɒɹi/"
   },
   {
     "id": 1771682255444.3792,
@@ -96,7 +3168,8 @@
     "meaning": "教;讲",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/tiːt͡ʃ/"
   },
   {
     "id": 1771682255444.5598,
@@ -105,7 +3178,8 @@
     "meaning": "那么;就",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ðen/"
   },
   {
     "id": 1771682255444.0002,
@@ -114,7 +3188,8 @@
     "meaning": "班长;监督员",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈmɒnɨtə/"
   },
   {
     "id": 1771682255444.6729,
@@ -123,7 +3198,8 @@
     "meaning": "开始;开端",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/stɑːt/"
   },
   {
     "id": 1771682255444.478,
@@ -132,7 +3208,8 @@
     "meaning": "乐意的",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈɹɛdi/"
   },
   {
     "id": 1771682255444.7273,
@@ -141,7 +3218,8 @@
     "meaning": "承诺;保证",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈpɹɒmɪs/"
   },
   {
     "id": 1771682255444.9534,
@@ -150,7 +3228,8 @@
     "meaning": "快地;快速地 / 快的;快速的",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/fɑːst/"
   },
   {
     "id": 1771682255444.2256,
@@ -159,7 +3238,8 @@
     "meaning": "健康的;强健的",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/fɪt/"
   },
   {
     "id": 1771682255444.6152,
@@ -168,7 +3248,8 @@
     "meaning": "就;正好",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/d͡ʒʌst/"
   },
   {
     "id": 1771682255444.1304,
@@ -177,7 +3258,8 @@
     "meaning": "球;球类游戏",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/bɔːl/"
   },
   {
     "id": 1771682255444.6497,
@@ -186,7 +3268,8 @@
     "meaning": "运动项目",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ɡeɪm/"
   },
   {
     "id": 1771682255444.5225,
@@ -195,7 +3278,8 @@
     "meaning": "队伍;球队",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/tiːm/"
   },
   {
     "id": 1771682255444.672,
@@ -204,7 +3288,8 @@
     "meaning": "最好的",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈbɛst/"
   },
   {
     "id": 1771682255444.4795,
@@ -213,7 +3298,8 @@
     "meaning": "得分;成绩",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/skɔː/"
   },
   {
     "id": 1771682255444.6057,
@@ -222,7 +3308,8 @@
     "meaning": "整齐的;整洁的;爱整洁的;爱整齐的 / 收拾;整理",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈtaɪdi/"
   },
   {
     "id": 1771682255444.8735,
@@ -231,7 +3318,8 @@
     "meaning": "确信的;有把握的",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ʃoː/"
   },
   {
     "id": 1771682255444.6223,
@@ -240,7 +3328,8 @@
     "meaning": "每个人",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈɛvɹibɒdi/"
   },
   {
     "id": 1771682255444.2913,
@@ -249,7 +3338,8 @@
     "meaning": "美的;美丽的",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/ˈbjuːtɪfəl/"
   },
   {
     "id": 1771682255444.655,
@@ -258,7 +3348,8 @@
     "meaning": "放飞(风筝);飞行;乘飞机",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/flaɪ/"
   },
   {
     "id": 1771682255444.7039,
@@ -276,7 +3367,8 @@
     "meaning": "游泳",
     "type": "word",
     "bookId": "1771682250259",
-    "addedAt": "2026-02-21"
+    "addedAt": "2026-02-21",
+    "phonetic": "/swɪm/"
   },
   {
     "id": 1771682238931.95,
