@@ -1,8 +1,8 @@
 /**
  * js/apps/ImageOcclusionApp.js
- * 图像遮挡独立模块 - v2.3 (排序与编号迭代版)
- * 1. 增加排序编号 (orderNum) 与自动计算
- * 2. 增加列表从小到大排序逻辑
+ * 图像遮挡独立模块 - v2.4 (编号显示迭代版)
+ * 1. 在编辑与测试模式下的遮挡块上显式展示对应的数字编号 (1, 2, 3...)
+ * 2. 优化遮挡块交互，鼠标悬浮时数字平滑切换为删除图标
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 
@@ -205,8 +205,14 @@ export default {
                     <div v-if="imgPreview" class="relative inline-block shadow-2xl rounded-lg overflow-hidden cursor-crosshair" @mousedown="startDraw" @mousemove="drawing" ref="imageContainer">
                         <img :src="imgPreview" class="max-h-[80vh] max-w-full block select-none pointer-events-none" draggable="false">
                         
-                        <div v-for="(mask, idx) in currentMasks" :key="idx" class="absolute bg-orange-500/60 border border-orange-300 hover:bg-red-500/80 hover:border-red-300 transition cursor-pointer flex items-center justify-center shadow-sm group z-10" :style="{ left: mask.x + '%', top: mask.y + '%', width: mask.w + '%', height: mask.h + '%' }" @click.stop="removeMask(idx)" @mousedown.stop>
-                            <i class="fas fa-times text-white text-[10px] opacity-0 group-hover:opacity-100"></i>
+                        <div v-for="(mask, idx) in currentMasks" :key="idx" 
+                             class="absolute bg-orange-500/60 border border-orange-300 hover:bg-red-500/80 hover:border-red-300 transition cursor-pointer flex items-center justify-center shadow-sm group z-10" 
+                             :style="{ left: mask.x + '%', top: mask.y + '%', width: mask.w + '%', height: mask.h + '%' }" 
+                             @click.stop="removeMask(idx)" 
+                             @mousedown.stop
+                        >
+                            <span class="text-white font-bold text-sm drop-shadow-md group-hover:opacity-0 transition-opacity">{{ idx + 1 }}</span>
+                            <i class="fas fa-times text-white text-sm absolute opacity-0 group-hover:opacity-100 transition-opacity"></i>
                         </div>
 
                         <div v-if="activeDrawingMask" class="absolute bg-blue-500/40 border border-blue-300 z-20 pointer-events-none" :style="{ left: activeDrawingMask.x + '%', top: activeDrawingMask.y + '%', width: activeDrawingMask.w + '%', height: activeDrawingMask.h + '%' }"></div>
@@ -239,11 +245,12 @@ export default {
                     <img :src="testItem.imageUrl" class="max-h-[80vh] max-w-full block" draggable="false">
                     
                     <div v-for="(mask, idx) in testMasksStatus" :key="idx"
-                         class="absolute border transition-all duration-300 cursor-pointer shadow-sm"
+                         class="absolute border transition-all duration-300 cursor-pointer shadow-sm flex items-center justify-center"
                          :class="mask.visible ? 'bg-orange-500 border-orange-400 opacity-100' : 'bg-transparent border-emerald-400/50 opacity-100 hover:bg-emerald-500/10'"
                          :style="{ left: mask.data.x + '%', top: mask.data.y + '%', width: mask.data.w + '%', height: mask.data.h + '%' }"
                          @click="toggleMask(idx)"
                     >
+                        <span v-if="mask.visible" class="text-white font-bold drop-shadow-md text-sm md:text-base">{{ idx + 1 }}</span>
                     </div>
                 </div>
 
@@ -274,21 +281,18 @@ export default {
         const currentGrade = ref('all');
         const searchQuery = ref(''); 
         
-        // --- 核心修复：多重排序逻辑 ---
+        // --- 排序逻辑 ---
         const filteredList = computed(() => {
             let list = [...props.occlusions];
             
-            // 1. 学科 & 年级过滤
             if (currentSubject.value !== 'all') list = list.filter(c => c.subject === currentSubject.value);
             if (currentGrade.value !== 'all') list = list.filter(c => c.grade === currentGrade.value);
             
-            // 2. 模糊搜索
             if (searchQuery.value.trim()) {
                 const keyword = searchQuery.value.toLowerCase();
                 list = list.filter(c => c.title.toLowerCase().includes(keyword));
             }
 
-            // 3. 排序：置顶(pinned)优先 > 编号(orderNum)从小到大 > 创建时间倒序
             return list.sort((a, b) => {
                 if (a.pinned && !b.pinned) return -1;
                 if (!a.pinned && b.pinned) return 1;
@@ -301,7 +305,6 @@ export default {
             });
         });
 
-        // 自动计算下一个编号
         const calculateNextOrderNum = (subject, grade) => {
             const existing = props.occlusions.filter(c => c.subject === subject && c.grade === grade);
             const maxOrder = existing.reduce((max, c) => Math.max(max, Number(c.orderNum) || 0), 0);

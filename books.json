@@ -1,20 +1,26 @@
 [
   {
-    "name": "七年级下一单元",
+    "id": "1771677268739",
+    "name": "初中英语七下单词汇总",
     "type": "word",
-    "icon": "fas fa-graduation-cap",
-    "id": "1771134130878"
-  },
-  {
-    "id": "1771136014585",
-    "name": "七年级下二单元",
-    "type": "word",
-    "icon": "fas fa-graduation-cap"
-  },
-  {
-    "id": "1771137396740",
-    "name": "七年级短语",
-    "type": "phrase",
     "icon": "fas fa-book"
+  },
+  {
+    "id": "1771682052906",
+    "name": "七年级下短语",
+    "type": "phrase",
+    "icon": "fas fa-star"
+  },
+  {
+    "id": "1771682233215",
+    "name": "七年级下第一单元",
+    "type": "word",
+    "icon": "fas fa-plane"
+  },
+  {
+    "id": "1771682250259",
+    "name": "七年级下第二单元",
+    "type": "word",
+    "icon": "fas fa-plane"
   }
 ]
