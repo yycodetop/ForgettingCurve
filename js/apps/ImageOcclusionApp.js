@@ -1,8 +1,9 @@
 /**
  * js/apps/ImageOcclusionApp.js
- * 图像遮挡独立模块 - v2.4 (编号显示迭代版)
- * 1. 在编辑与测试模式下的遮挡块上显式展示对应的数字编号 (1, 2, 3...)
- * 2. 优化遮挡块交互，鼠标悬浮时数字平滑切换为删除图标
+ * 图像遮挡独立模块 - v2.5 (倾斜遮挡迭代版)
+ * 1. 支持遮挡块的自由旋转、精确调整宽度和高度
+ * 2. 支持拖拽移动已绘制的遮挡块
+ * 3. 增加选中状态与属性控制面板，支持鼠标滚轮快捷旋转
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 
@@ -147,7 +148,7 @@ export default {
                 </div>
                 <div class="flex items-center gap-4">
                     <div class="text-xs text-slate-400">
-                        <span v-if="currentMasks.length > 0">已添加 <span class="text-pink-400 font-bold">{{ currentMasks.length }}</span> 个遮挡框</span>
+                        <span v-if="currentMasks.length > 0">已添加 <span class="text-pink-400 font-bold">{{ currentMasks.length }}</span> 个遮挡框。支持拖拽移动，左侧面板可精调。</span>
                         <span v-else>请在图片上 <span class="text-pink-400 font-bold">按住左键拖动</span> 绘制遮挡</span>
                     </div>
                     <button @click="saveItem" class="px-6 py-2 bg-pink-600 hover:bg-pink-500 text-white font-bold rounded-xl shadow-lg shadow-pink-900/50 transition transform active:scale-95">
@@ -157,7 +158,7 @@ export default {
             </div>
 
             <div class="flex flex-1 overflow-hidden">
-                <div class="w-[350px] bg-slate-800/50 border-r border-white/5 p-6 flex flex-col gap-6 overflow-y-auto">
+                <div class="w-[350px] bg-slate-800/50 border-r border-white/5 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
                     <label v-if="!imgPreview" class="border-2 border-dashed border-slate-600 rounded-2xl h-48 flex flex-col items-center justify-center text-slate-400 hover:border-pink-500 hover:text-pink-500 transition cursor-pointer group hover:bg-slate-800/50">
                         <i class="fas fa-cloud-upload-alt text-3xl mb-2 group-hover:scale-110 transition-transform"></i>
                         <span class="text-sm font-bold">点击选择图片</span>
@@ -199,23 +200,77 @@ export default {
                             <input v-model="form.title" class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-sm text-white focus:border-pink-500 outline-none transition" placeholder="例如: 动植物细胞结构图">
                         </div>
                     </div>
+
+                    <div v-if="activeMaskIdx !== null && currentMasks[activeMaskIdx]" class="space-y-4 bg-slate-700/40 p-5 rounded-2xl border border-slate-600/50 animate-fade-in shadow-lg">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-bold text-pink-400 flex items-center gap-2">
+                                <i class="fas fa-sliders-h"></i> 遮挡块 {{ activeMaskIdx + 1 }} 属性
+                            </span>
+                            <button @click="activeMaskIdx = null" class="text-slate-400 hover:text-white transition w-6 h-6 flex items-center justify-center rounded-full hover:bg-slate-600"><i class="fas fa-times"></i></button>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                                    <span>旋转角度 (支持滚轮)</span>
+                                    <span class="font-mono bg-slate-800 px-1.5 rounded">{{ currentMasks[activeMaskIdx].r || 0 }}°</span>
+                                </div>
+                                <input type="range" min="-180" max="180" v-model.number="currentMasks[activeMaskIdx].r" class="w-full accent-pink-500 h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                                    <span>宽度 (%)</span>
+                                    <span class="font-mono bg-slate-800 px-1.5 rounded">{{ currentMasks[activeMaskIdx].w.toFixed(1) }}%</span>
+                                </div>
+                                <input type="range" min="0.5" max="100" step="0.5" v-model.number="currentMasks[activeMaskIdx].w" class="w-full accent-pink-500 h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 mb-1.5">
+                                    <span>高度 (%)</span>
+                                    <span class="font-mono bg-slate-800 px-1.5 rounded">{{ currentMasks[activeMaskIdx].h.toFixed(1) }}%</span>
+                                </div>
+                                <input type="range" min="0.5" max="100" step="0.5" v-model.number="currentMasks[activeMaskIdx].h" class="w-full accent-pink-500 h-1.5 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div class="pt-2 border-t border-slate-600">
+                                <button @click="removeMask(activeMaskIdx)" class="w-full py-2.5 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                    <i class="fas fa-trash-alt"></i> 删除此遮挡块
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else-if="imgPreview" class="bg-slate-700/20 p-4 rounded-2xl border border-slate-600/30 text-slate-400 text-xs text-center border-dashed">
+                        <i class="fas fa-mouse-pointer text-lg mb-2 opacity-50 block"></i>
+                        点击或绘制右侧遮挡块<br>可调整其大小、位置和旋转角度
+                    </div>
                 </div>
 
-                <div class="flex-1 bg-slate-950 relative overflow-hidden flex items-center justify-center p-8 select-none" @mouseup="endDraw" @mouseleave="endDraw">
-                    <div v-if="imgPreview" class="relative inline-block shadow-2xl rounded-lg overflow-hidden cursor-crosshair" @mousedown="startDraw" @mousemove="drawing" ref="imageContainer">
+                <div class="flex-1 bg-slate-950 relative overflow-hidden flex items-center justify-center p-8 select-none" 
+                     @mousemove="handleMouseMove" 
+                     @mouseup="handleMouseUp" 
+                     @mouseleave="handleMouseUp">
+                     
+                    <div v-if="imgPreview" class="relative inline-block shadow-2xl rounded-lg overflow-hidden cursor-crosshair" 
+                         @mousedown="startDraw" 
+                         ref="imageContainer">
+                         
                         <img :src="imgPreview" class="max-h-[80vh] max-w-full block select-none pointer-events-none" draggable="false">
                         
                         <div v-for="(mask, idx) in currentMasks" :key="idx" 
-                             class="absolute bg-orange-500/60 border border-orange-300 hover:bg-red-500/80 hover:border-red-300 transition cursor-pointer flex items-center justify-center shadow-sm group z-10" 
-                             :style="{ left: mask.x + '%', top: mask.y + '%', width: mask.w + '%', height: mask.h + '%' }" 
-                             @click.stop="removeMask(idx)" 
-                             @mousedown.stop
+                             class="absolute border transition-colors cursor-move flex items-center justify-center shadow-sm group z-10" 
+                             :class="activeMaskIdx === idx ? 'bg-orange-500/40 border-orange-300 shadow-[0_0_0_2px_rgba(249,115,22,0.8)]' : 'bg-orange-500/60 border-orange-300 hover:bg-orange-400/80 hover:border-orange-200'"
+                             :style="{ left: mask.x + '%', top: mask.y + '%', width: mask.w + '%', height: mask.h + '%', transform: 'rotate(' + (mask.r || 0) + 'deg)', transformOrigin: 'center center' }" 
+                             @mousedown.stop="startDragMask($event, idx)"
+                             @click.stop="activeMaskIdx = idx"
+                             @wheel.stop.prevent="rotateMaskWheel(idx, $event)"
                         >
-                            <span class="text-white font-bold text-sm drop-shadow-md group-hover:opacity-0 transition-opacity">{{ idx + 1 }}</span>
-                            <i class="fas fa-times text-white text-sm absolute opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            <span class="text-white font-bold text-sm drop-shadow-md transition-opacity" :class="activeMaskIdx === idx ? 'opacity-100' : 'group-hover:opacity-0'">{{ idx + 1 }}</span>
+                            
+                            <button @click.stop="removeMask(idx)" class="absolute -top-3 -right-3 w-6 h-6 bg-red-500 rounded-full text-white text-xs flex items-center justify-center opacity-0 transition-opacity shadow-md hover:bg-red-600 z-20" :class="activeMaskIdx === idx ? 'opacity-100' : 'group-hover:opacity-100'">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
 
-                        <div v-if="activeDrawingMask" class="absolute bg-blue-500/40 border border-blue-300 z-20 pointer-events-none" :style="{ left: activeDrawingMask.x + '%', top: activeDrawingMask.y + '%', width: activeDrawingMask.w + '%', height: activeDrawingMask.h + '%' }"></div>
+                        <div v-if="activeDrawingMask" class="absolute bg-blue-500/40 border border-blue-300 z-20 pointer-events-none" :style="{ left: activeDrawingMask.x + '%', top: activeDrawingMask.y + '%', width: activeDrawingMask.w + '%', height: activeDrawingMask.h + '%', transform: 'rotate(' + (activeDrawingMask.r || 0) + 'deg)', transformOrigin: 'center center' }"></div>
                     </div>
                 </div>
             </div>
@@ -247,7 +302,7 @@ export default {
                     <div v-for="(mask, idx) in testMasksStatus" :key="idx"
                          class="absolute border transition-all duration-300 cursor-pointer shadow-sm flex items-center justify-center"
                          :class="mask.visible ? 'bg-orange-500 border-orange-400 opacity-100' : 'bg-transparent border-emerald-400/50 opacity-100 hover:bg-emerald-500/10'"
-                         :style="{ left: mask.data.x + '%', top: mask.data.y + '%', width: mask.data.w + '%', height: mask.data.h + '%' }"
+                         :style="{ left: mask.data.x + '%', top: mask.data.y + '%', width: mask.data.w + '%', height: mask.data.h + '%', transform: 'rotate(' + (mask.data.r || 0) + 'deg)', transformOrigin: 'center center' }"
                          @click="toggleMask(idx)"
                     >
                         <span v-if="mask.visible" class="text-white font-bold drop-shadow-md text-sm md:text-base">{{ idx + 1 }}</span>
@@ -322,6 +377,13 @@ export default {
         const imageContainer = ref(null);
         const currentMasks = ref([]); 
         const form = ref({ id: null, title: '', subject: '', grade: '', orderNum: 1 });
+        
+        // 新增：选中与拖动状态
+        const activeMaskIdx = ref(null);
+        const isDrawing = ref(false);
+        const isDraggingMask = ref(false);
+        const drawStartPos = ref({ x: 0, y: 0, mx: 0, my: 0 });
+        const activeDrawingMask = ref(null);
 
         const openEditor = (item) => {
             if (item) {
@@ -330,6 +392,8 @@ export default {
                 form.value.orderNum = item.orderNum || 0;
                 imgPreview.value = item.imageUrl;
                 currentMasks.value = JSON.parse(JSON.stringify(item.masks || []));
+                // 确保旧数据也有 r 属性
+                currentMasks.value.forEach(m => { if (m.r === undefined) m.r = 0; });
                 imageFile.value = null;
             } else {
                 isEditing.value = false;
@@ -344,6 +408,8 @@ export default {
                 imageFile.value = null;
             }
             isDrawing.value = false;
+            isDraggingMask.value = false;
+            activeMaskIdx.value = null;
             activeDrawingMask.value = null;
             showEditor.value = true;
         };
@@ -368,13 +434,10 @@ export default {
             reader.readAsDataURL(file);
         };
 
-        const isDrawing = ref(false);
-        const drawStartPos = ref({ x: 0, y: 0 });
-        const activeDrawingMask = ref(null);
-
         const startDraw = (e) => {
             if (!imageContainer.value) return;
             e.preventDefault();
+            activeMaskIdx.value = null; // 取消选中
             isDrawing.value = true;
             drawStartPos.value = { x: e.clientX, y: e.clientY };
             
@@ -382,38 +445,86 @@ export default {
             activeDrawingMask.value = { 
                 x: ((e.clientX - rect.left) / rect.width) * 100, 
                 y: ((e.clientY - rect.top) / rect.height) * 100, 
-                w: 0, h: 0 
+                w: 0, h: 0, r: 0 
             };
         };
 
-        const drawing = (e) => {
-            if (!isDrawing.value || !activeDrawingMask.value || !imageContainer.value) return;
-            const rect = imageContainer.value.getBoundingClientRect();
-            const minX = Math.min(drawStartPos.value.x, e.clientX) - rect.left;
-            const minY = Math.min(drawStartPos.value.y, e.clientY) - rect.top;
-            const width = Math.abs(e.clientX - drawStartPos.value.x);
-            const height = Math.abs(e.clientY - drawStartPos.value.y);
-
-            activeDrawingMask.value = {
-                x: (minX / rect.width) * 100,
-                y: (minY / rect.height) * 100,
-                w: (width / rect.width) * 100,
-                h: (height / rect.height) * 100
+        const startDragMask = (e, idx) => {
+            e.preventDefault();
+            activeMaskIdx.value = idx;
+            isDraggingMask.value = true;
+            drawStartPos.value = { 
+                x: e.clientX, 
+                y: e.clientY,
+                mx: currentMasks.value[idx].x,
+                my: currentMasks.value[idx].y
             };
         };
 
-        const endDraw = () => {
-            if (!isDrawing.value) return;
-            isDrawing.value = false;
-            if (activeDrawingMask.value) {
-                if (activeDrawingMask.value.w > 0.5 && activeDrawingMask.value.h > 0.5) {
-                    currentMasks.value.push({ ...activeDrawingMask.value });
-                }
-                activeDrawingMask.value = null;
+        const handleMouseMove = (e) => {
+            if (isDrawing.value) {
+                if (!activeDrawingMask.value || !imageContainer.value) return;
+                const rect = imageContainer.value.getBoundingClientRect();
+                const minX = Math.min(drawStartPos.value.x, e.clientX) - rect.left;
+                const minY = Math.min(drawStartPos.value.y, e.clientY) - rect.top;
+                const width = Math.abs(e.clientX - drawStartPos.value.x);
+                const height = Math.abs(e.clientY - drawStartPos.value.y);
+
+                activeDrawingMask.value = {
+                    x: (minX / rect.width) * 100,
+                    y: (minY / rect.height) * 100,
+                    w: (width / rect.width) * 100,
+                    h: (height / rect.height) * 100,
+                    r: 0
+                };
+            } else if (isDraggingMask.value && activeMaskIdx.value !== null) {
+                if (!imageContainer.value) return;
+                const rect = imageContainer.value.getBoundingClientRect();
+                const dx = ((e.clientX - drawStartPos.value.x) / rect.width) * 100;
+                const dy = ((e.clientY - drawStartPos.value.y) / rect.height) * 100;
+                currentMasks.value[activeMaskIdx.value].x = drawStartPos.value.mx + dx;
+                currentMasks.value[activeMaskIdx.value].y = drawStartPos.value.my + dy;
             }
         };
 
-        const removeMask = (idx) => currentMasks.value.splice(idx, 1);
+        const handleMouseUp = () => {
+            if (isDrawing.value) {
+                isDrawing.value = false;
+                if (activeDrawingMask.value) {
+                    if (activeDrawingMask.value.w > 0.5 && activeDrawingMask.value.h > 0.5) {
+                        currentMasks.value.push({ ...activeDrawingMask.value });
+                        activeMaskIdx.value = currentMasks.value.length - 1; // 绘制完自动选中
+                    }
+                    activeDrawingMask.value = null;
+                }
+            }
+            if (isDraggingMask.value) {
+                isDraggingMask.value = false;
+            }
+        };
+
+        const rotateMaskWheel = (idx, e) => {
+            if (!currentMasks.value[idx]) return;
+            const mask = currentMasks.value[idx];
+            let currentR = mask.r || 0;
+            currentR += (e.deltaY > 0 ? 5 : -5); // 每次滚轮增减 5 度
+            
+            // 限制在 -180 到 180 之间
+            if (currentR > 180) currentR -= 360;
+            if (currentR < -180) currentR += 360;
+            
+            mask.r = currentR;
+            activeMaskIdx.value = idx; // 触发选中
+        };
+
+        const removeMask = (idx) => {
+            currentMasks.value.splice(idx, 1);
+            if (activeMaskIdx.value === idx) {
+                activeMaskIdx.value = null;
+            } else if (activeMaskIdx.value > idx) {
+                activeMaskIdx.value--;
+            }
+        };
 
         const saveItem = () => {
             if (!imgPreview.value) return alert('请先上传图片底图！');
@@ -456,7 +567,8 @@ export default {
 
         const startTest = (item) => {
             testItem.value = item;
-            testMasksStatus.value = item.masks.map(m => ({ data: m, visible: true }));
+            // 确保测试时读取 r 属性
+            testMasksStatus.value = item.masks.map(m => ({ data: { ...m, r: m.r || 0 }, visible: true }));
             showTestModal.value = true;
         };
 
@@ -497,9 +609,10 @@ export default {
         return {
             currentSubject, currentGrade, searchQuery, filteredList,
             showEditor, isEditing, form, imgPreview, imageContainer, currentMasks,
+            activeMaskIdx, activeDrawingMask, // 导出新状态
             openEditor, handleImageSelect, removeMask, saveItem, handleSubjectGradeChange,
             togglePin, toggleCurve,
-            startDraw, drawing, endDraw, activeDrawingMask,
+            startDraw, startDragMask, handleMouseMove, handleMouseUp, rotateMaskWheel, // 导出新方法
             showTestModal, testItem, testMasksStatus,
             hasPrevTest, hasNextTest, navTest, closeTestModal,
             startTest, toggleMask, toggleAllMasks, rateProficiency
