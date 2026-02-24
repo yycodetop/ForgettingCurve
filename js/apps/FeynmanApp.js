@@ -1,9 +1,12 @@
 /**
  * js/apps/FeynmanApp.js
- * 费曼自测独立模块 - v4.2 (完美排序修复版)
- * 修复：置顶排序逻辑反向问题，以及旧数据无编号时异常置顶的问题。
+ * 费曼自测独立模块 - v4.3 (LaTeX 公式支持版)
+ * 迭代：
+ * 1. 接入 MathJax 渲染引擎，支持标准定义、题目、提示词的 LaTeX 渲染。
+ * 2. 新增新建/编辑卡片时的公式实时预览区。
+ * 3. 修复 DOM 刷新时公式不渲染的问题。
  */
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, watch, onMounted, nextTick } from 'vue';
 
 export default {
     props: ['concepts', 'subjects', 'grades'], 
@@ -133,7 +136,7 @@ export default {
                         </div>
 
                         <div class="flex-1 flex flex-col relative z-10">
-                            <h4 class="font-bold text-slate-800 text-xl mb-3 line-clamp-2 leading-snug group-hover:text-cyan-700 transition-colors" :title="item.title">
+                            <h4 class="font-bold text-slate-800 text-xl mb-3 line-clamp-2 leading-snug group-hover:text-cyan-700 transition-colors math-content" :title="item.title">
                                 {{ item.title }}
                             </h4>
                             
@@ -143,7 +146,7 @@ export default {
                                         <div class="w-1 h-3 bg-amber-400 rounded-full"></div>
                                         <span class="text-[10px] font-bold text-amber-500 uppercase">Hints</span>
                                     </div>
-                                    <p class="text-xs text-amber-800/80 line-clamp-2 leading-relaxed">{{ item.hints }}</p>
+                                    <p class="text-xs text-amber-800/80 line-clamp-2 leading-relaxed math-content">{{ item.hints }}</p>
                                 </div>
                                 <div v-else class="text-slate-300 text-xs italic py-2">
                                     无提示词...
@@ -210,20 +213,30 @@ export default {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">核心概念 (Question)</label>
-                        <input v-model="newItem.title" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-800 outline-none focus:border-cyan-500 focus:bg-white transition" placeholder="例如: 什么是量子纠缠？">
+                        <div class="flex justify-between items-end mb-2">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">核心概念 (Question)</label>
+                            <span class="text-[10px] text-cyan-500 bg-cyan-50 px-2 py-1 rounded" v-pre>支持 LaTeX $...$</span>
+                        </div>
+                        <input v-model="newItem.title" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-800 outline-none focus:border-cyan-500 focus:bg-white transition font-mono" placeholder="例如: 什么是量子纠缠？">
                     </div>
 
                     <div>
                         <div class="flex justify-between items-center mb-2">
                             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">关键词提示 (Hints)</label>
                         </div>
-                        <textarea v-model="newItem.hints" rows="2" class="w-full px-5 py-3 bg-amber-50/50 border border-amber-100 rounded-xl text-sm text-slate-700 outline-none focus:border-amber-400 focus:bg-white transition" placeholder="例如: 叠加态, 远距离, 瞬时感应..."></textarea>
+                        <textarea v-model="newItem.hints" rows="2" class="w-full px-5 py-3 bg-amber-50/50 border border-amber-100 rounded-xl text-sm text-slate-700 outline-none focus:border-amber-400 focus:bg-white transition font-mono" placeholder="例如: 叠加态, 远距离, 瞬时感应..."></textarea>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">标准定义 (Answer - 列表隐藏)</label>
-                        <textarea v-model="newItem.content" rows="6" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-cyan-500 focus:bg-white transition custom-scrollbar leading-relaxed" placeholder="在此输入标准的定义或解释，用于自测后比对..."></textarea>
+                        <div class="flex justify-between items-end mb-2">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide">标准定义 (Answer - 列表隐藏)</label>
+                        </div>
+                        <textarea v-model="newItem.content" rows="4" class="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-cyan-500 focus:bg-white transition custom-scrollbar leading-relaxed font-mono" placeholder="在此输入标准的定义或解释，支持 LaTeX 公式（如 $E=mc^2$）..."></textarea>
+                        
+                        <div class="mt-3 p-4 bg-cyan-50/50 rounded-xl border border-cyan-100">
+                            <label class="block text-[10px] font-bold text-cyan-500 mb-2 uppercase">排版与公式预览</label>
+                            <div class="math-content text-slate-700 text-sm whitespace-pre-wrap">{{ newItem.content }}</div>
+                        </div>
                     </div>
                 </div>
 
@@ -262,7 +275,7 @@ export default {
                                 <div class="w-2 h-2 rounded-full" :class="item.proficiency >= 8 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-slate-700'"></div>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <div class="text-sm font-bold truncate transition-colors" 
+                                <div class="text-sm font-bold truncate transition-colors math-content" 
                                      :class="testItem && testItem.id === item.id ? 'text-cyan-400' : 'text-slate-400 group-hover:text-slate-300'">
                                     {{ item.title }}
                                 </div>
@@ -276,11 +289,11 @@ export default {
                         <div v-if="testItem" class="max-w-2xl mx-auto w-full flex flex-col h-full">
                             <div class="mb-8">
                                 <div class="text-cyan-500 font-bold text-xs uppercase tracking-[0.2em] mb-3">The Concept</div>
-                                <h2 class="text-4xl font-bold text-white leading-tight">{{ testItem.title }}</h2>
+                                <h2 class="text-4xl font-bold text-white leading-tight math-content">{{ testItem.title }}</h2>
                             </div>
                             <div v-if="testItem.hints" class="mb-10 bg-amber-900/10 p-5 rounded-2xl border border-amber-900/30">
                                 <div class="text-amber-500 font-bold text-xs uppercase tracking-widest mb-2"><i class="fas fa-lightbulb mr-2"></i>Hints</div>
-                                <p class="text-amber-100/70 leading-relaxed">{{ testItem.hints }}</p>
+                                <p class="text-amber-100/70 leading-relaxed math-content">{{ testItem.hints }}</p>
                             </div>
                             <div class="flex-1 flex flex-col relative">
                                 <div class="text-slate-500 font-bold text-xs uppercase tracking-widest mb-3 flex justify-between items-center">
@@ -312,7 +325,7 @@ export default {
                             <div class="text-emerald-500 font-bold text-xs uppercase tracking-[0.2em] mb-6">Standard Definition</div>
                             
                             <div class="relative min-h-[300px] bg-slate-800/50 p-8 rounded-[2rem] border border-slate-700/50 shrink-0">
-                                <div class="text-2xl leading-loose text-slate-200 whitespace-pre-wrap transition-all duration-700"
+                                <div class="text-2xl leading-loose text-slate-200 whitespace-pre-wrap transition-all duration-700 math-content"
                                      :class="isContentBlurred ? 'blur-lg select-none opacity-40' : 'blur-0 opacity-100'"
                                 >
                                     {{ testItem.content }}
@@ -363,16 +376,30 @@ export default {
     </div>
     `,
     setup(props, { emit }) {
+        // --- 核心修复：引入 MathJax 渲染控制逻辑 ---
+        let mathJaxTimeout = null;
+        const renderMath = () => {
+            if (mathJaxTimeout) clearTimeout(mathJaxTimeout);
+            mathJaxTimeout = setTimeout(() => {
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    try {
+                        if (window.MathJax.typesetClear) window.MathJax.typesetClear();
+                        window.MathJax.typesetPromise().catch((err) => console.warn('MathJax error:', err));
+                    } catch (e) {
+                        console.error('MathJax execution failed:', e);
+                    }
+                }
+            }, 100); 
+        };
+
         const currentSubject = ref('all');
         const currentGrade = ref('all');
         const searchQuery = ref('');
         const today = new Date().toISOString().split('T')[0];
 
-        // --- 核心修复：更健壮的排序逻辑 ---
         const filteredList = computed(() => {
             let list = [...props.concepts];
             
-            // 1. 过滤
             if (currentSubject.value !== 'all') list = list.filter(c => c.subject === currentSubject.value);
             if (currentGrade.value !== 'all') list = list.filter(c => c.grade === currentGrade.value);
             if (searchQuery.value.trim()) {
@@ -380,20 +407,15 @@ export default {
                 list = list.filter(c => c.title && c.title.toLowerCase().includes(q));
             }
             
-            // 2. 排序
             return list.sort((a, b) => {
-                // 规则 1：置顶优先（如果 A 置顶且 B 未置顶，A 排前面）
                 if (a.isPinned && !b.isPinned) return -1;
                 if (!a.isPinned && b.isPinned) return 1;
                 
-                // 规则 2：根据排序编号从小到大排序
-                // 如果旧数据没有 orderNum，将其设为 Infinity，这样无编号的会沉底
                 const orderA = (a.orderNum !== undefined && a.orderNum !== null && a.orderNum !== '') ? Number(a.orderNum) : Infinity;
                 const orderB = (b.orderNum !== undefined && b.orderNum !== null && b.orderNum !== '') ? Number(b.orderNum) : Infinity;
                 
                 if (orderA !== orderB) return orderA - orderB;
                 
-                // 规则 3：如果都没置顶且都没编号（或编号相同），按 ID 倒序（最新创建优先）
                 return b.id - a.id;
             });
         });
@@ -422,7 +444,6 @@ export default {
         const editingId = ref(null);
         const newItem = ref({ subject: '通用', grade: '通用', title: '', hints: '', content: '', isPinned: false, proficiency: 0, notes: '', reviewCount: 0, reviewSchedule: [], orderNum: 1 });
 
-        // 计算指定学科和年级的下一个排序编号
         const calculateNextOrderNum = (subject, grade) => {
             const existing = props.concepts.filter(c => c.subject === subject && c.grade === grade);
             const maxOrder = existing.reduce((max, c) => Math.max(max, Number(c.orderNum) || 0), 0);
@@ -444,13 +465,12 @@ export default {
                     grade: defaultGrade, 
                     title: '', hints: '', content: '', 
                     isPinned: false, proficiency: 0, notes: '', reviewCount: 0, reviewSchedule: [],
-                    orderNum: calculateNextOrderNum(defaultSub, defaultGrade) // 自动带出
+                    orderNum: calculateNextOrderNum(defaultSub, defaultGrade) 
                 };
             }
             showAddModal.value = true;
         };
 
-        // 当用户在弹窗里切换学科或年级时，重新计算编号
         const handleSubjectGradeChange = () => {
             if (!isEditing.value) {
                 newItem.value.orderNum = calculateNextOrderNum(newItem.value.subject, newItem.value.grade);
@@ -459,7 +479,6 @@ export default {
 
         const handleSave = () => {
             if (!newItem.value.title) return alert('请输入核心概念标题');
-            // 确保 orderNum 存为数字
             newItem.value.orderNum = Number(newItem.value.orderNum) || 0;
             const conceptData = { type: 'feynman', ...newItem.value };
             
@@ -579,6 +598,17 @@ export default {
             if (recognition) { recognition.stop(); recognition = null; }
             isListening.value = false;
         };
+
+        // --- 添加全局侦听器：只要相关数据变动，自动触发公式重新渲染 ---
+        watch(() => newItem.value.content, () => renderMath());
+        watch(() => newItem.value.title, () => renderMath());
+        watch(() => newItem.value.hints, () => renderMath());
+        watch([showAddModal, showTestModal, testItem, isContentBlurred], () => renderMath());
+        watch(displayList, () => renderMath(), { deep: true });
+
+        onMounted(() => {
+            renderMath();
+        });
         
         onUnmounted(() => stopSpeech());
 

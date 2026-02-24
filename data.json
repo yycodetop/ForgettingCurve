@@ -24,7 +24,8 @@
           "stage": 2,
           "interval": 2,
           "date": "2026-02-23",
-          "completed": false
+          "completed": true,
+          "quality": "SSS"
         },
         {
           "stage": 3,
@@ -110,6 +111,58 @@
           "stage": 5,
           "interval": 15,
           "date": "2026-03-05",
+          "completed": false
+        }
+      ]
+    },
+    {
+      "id": 1771848458026,
+      "title": "数学概念费曼复习",
+      "category": "数学",
+      "type": "ebbinghaus",
+      "startDate": "2026-02-23",
+      "endDate": "2026-03-23",
+      "weekendDays": [
+        0,
+        6
+      ],
+      "attachments": [],
+      "schedule": [
+        {
+          "stage": 0,
+          "interval": 0,
+          "date": "2026-02-23",
+          "completed": true,
+          "quality": "SSS"
+        },
+        {
+          "stage": 1,
+          "interval": 1,
+          "date": "2026-02-24",
+          "completed": false
+        },
+        {
+          "stage": 2,
+          "interval": 2,
+          "date": "2026-02-25",
+          "completed": false
+        },
+        {
+          "stage": 3,
+          "interval": 4,
+          "date": "2026-02-27",
+          "completed": false
+        },
+        {
+          "stage": 4,
+          "interval": 7,
+          "date": "2026-03-02",
+          "completed": false
+        },
+        {
+          "stage": 5,
+          "interval": 15,
+          "date": "2026-03-10",
           "completed": false
         }
       ]

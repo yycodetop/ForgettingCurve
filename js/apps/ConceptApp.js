@@ -1,11 +1,12 @@
 /**
  * js/apps/ConceptApp.js
  * 概念学习通用应用框架 (挖空填空)
- * 迭代 v3.5 (UI布局优化版): 
- * 1. 调整卡片布局，状态标签（错题、待复习等）移至左下角
- * 2. 优化“开始背诵”按钮长度，与状态标签同行显示
+ * 迭代 v3.9 (防崩溃 & 公式完美兼容版): 
+ * 1. 修复 Vue 模板编译冲突导致的致命报错 (增加 v-pre 逃逸指令)
+ * 2. 增加 String() 与 || '' 保护机制，防止底层核心报错
+ * 3. 保留无视空格的抗干扰 LaTeX 判题算法与独立的 blankIdx 索引
  */
-import { ref, computed, nextTick, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onUnmounted, watch, onMounted } from 'vue';
 
 export default {
     props: ['mode', 'concepts', 'subjects', 'grades', 'initialAction'], 
@@ -115,7 +116,7 @@ export default {
                         <h4 class="font-bold text-slate-800 text-lg mb-2 line-clamp-1 pr-6" :title="item.title">{{ item.title }}</h4>
                         
                         <div class="flex-1 min-h-[60px] mb-3">
-                            <p v-if="mode === 'cloze'" class="text-sm text-slate-500 leading-relaxed line-clamp-3 font-mono bg-slate-50 p-2 rounded-lg whitespace-pre-wrap" v-html="formatClozePreview(item.content)"></p>
+                            <p v-if="mode === 'cloze'" class="text-sm text-slate-600 leading-relaxed line-clamp-3 bg-slate-50 p-3 rounded-lg whitespace-pre-wrap math-content" v-html="formatClozePreview(item.content)"></p>
                             <div v-else-if="mode === 'image'" class="w-full h-24 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 overflow-hidden relative">
                                 <img v-if="item.imageUrl" :src="item.imageUrl" class="w-full h-full object-cover">
                                 <i v-else class="fas fa-image text-2xl"></i>
@@ -221,11 +222,19 @@ export default {
                     </div>
 
                     <div v-if="mode === 'cloze'">
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="block text-xs font-bold text-slate-500">定义内容</label>
-                            <span class="text-[10px] text-amber-500 bg-amber-50 px-2 rounded">使用 <code class="font-mono font-bold">{{ }}</code> 包裹关键词</span>
+                        <div class="flex justify-between items-end mb-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500">定义内容 <span class="text-indigo-400 font-normal ml-1">(支持 LaTeX 公式 $...$)</span></label>
+                                <p class="text-[10px] text-red-400 mt-1" v-pre>⚠️ 注意：不要将 {{}} 放在 $...$ 内部，保持公式独立。如：{{ $E=mc^2$ }}</p>
+                            </div>
+                            <span class="text-[10px] text-amber-500 bg-amber-50 px-2 py-1 rounded" v-pre>使用 <code class="font-mono font-bold">{{ }}</code> 挖空</span>
                         </div>
-                        <textarea v-model="newItem.content" rows="6" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 custom-scrollbar whitespace-pre-wrap" placeholder="例如: \n第一行内容\n第二行{{关键词}}内容"></textarea>
+                        <textarea v-model="newItem.content" rows="4" class="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 custom-scrollbar whitespace-pre-wrap font-mono" :placeholder="'例：勾股定理的公式是 {{ $a^2 + b^2 = c^2$ }}'"></textarea>
+                        
+                        <div class="mt-3 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                            <label class="block text-[10px] font-bold text-indigo-400 mb-2 uppercase">排版与公式预览</label>
+                            <div class="math-content text-slate-700 text-sm whitespace-pre-wrap" v-html="formatClozePreview(newItem.content)"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -313,7 +322,7 @@ export default {
                             <i class="fas fa-book-reader mr-1"></i> 正在复习 · 显示全部内容
                         </div>
 
-                        <div class="text-2xl leading-[3rem] text-slate-700 font-serif whitespace-pre-wrap text-justify">
+                        <div class="text-2xl leading-[3rem] text-slate-700 font-serif whitespace-pre-wrap text-justify math-content">
                             <template v-for="(segment, idx) in parsedClozeContent" :key="idx">
                                 <span v-if="segment.type === 'text'">{{ segment.val }}</span>
                                 
@@ -329,7 +338,7 @@ export default {
                                            @input="handleInputChange(idx)"
                                            @keyup.enter="focusNextInput(idx)"
                                            :id="'cloze-input-' + idx"
-                                           :class="getClozeClass(segment, idx)"
+                                           :class="getClozeClass(segment)"
                                            :style="{ width: Math.max((segment.userVal || segment.answer).length, 4) + 'em' }"
                                            autocomplete="off"
                                            class="text-center outline-none border-b-2 bg-transparent transition-all duration-300 py-0.5 rounded-t"
@@ -409,6 +418,21 @@ export default {
         focus: { mounted: (el) => el.focus() }
     },
     setup(props, { emit }) {
+        let mathJaxTimeout = null;
+        const renderMath = () => {
+            if (mathJaxTimeout) clearTimeout(mathJaxTimeout);
+            mathJaxTimeout = setTimeout(() => {
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    try {
+                        if (window.MathJax.typesetClear) window.MathJax.typesetClear();
+                        window.MathJax.typesetPromise().catch((err) => console.warn('MathJax error:', err));
+                    } catch (e) {
+                        console.error('MathJax execution failed:', e);
+                    }
+                }
+            }, 100); 
+        };
+
         const today = computed(() => new Date().toISOString().split('T')[0]);
 
         const isDueForReview = (item) => {
@@ -457,27 +481,27 @@ export default {
             return configs[props.mode] || configs.cloze;
         });
 
-        // --- 核心：多重排序逻辑 ---
         const filteredList = (sub) => {
             let list = [...props.concepts];
             if (sub !== 'all') list = list.filter(c => c.subject === sub);
             if (currentGrade.value !== 'all') list = list.filter(c => c.grade === currentGrade.value);
             
             return list.sort((a, b) => {
-                // 1. 置顶优先
                 if (a.isPinned && !b.isPinned) return -1;
                 if (!a.isPinned && b.isPinned) return 1;
                 
-                // 2. 编号从小到大
                 const orderA = (a.orderNum !== undefined && a.orderNum !== null && a.orderNum !== '') ? Number(a.orderNum) : Infinity;
                 const orderB = (b.orderNum !== undefined && b.orderNum !== null && b.orderNum !== '') ? Number(b.orderNum) : Infinity;
                 if (orderA !== orderB) return orderA - orderB;
                 
-                // 3. ID 倒序
                 return b.id - a.id;
             });
         };
         const displayList = computed(() => filteredList(currentSubject.value));
+
+        watch(displayList, () => renderMath(), { deep: true });
+        watch(() => newItem.value.content, () => renderMath());
+        watch([showAddModal, showReciteModal, isReviewMode, currentReciteItem], () => renderMath());
 
         const calculateNextOrderNum = (subject, grade) => {
             const existing = props.concepts.filter(c => c.subject === subject && c.grade === grade);
@@ -521,20 +545,25 @@ export default {
 
         const getListTitleClass = (item) => {
             if (currentReciteItem.value && currentReciteItem.value.id === item.id) return 'text-indigo-400';
-            if (item.status === 'correct') return 'text-emerald-500 font-bold';
+            if (item.status === 'correct') return 'textemerald-500 font-bold';
             if (item.status === 'error') return 'text-red-500 font-bold';
             return 'text-slate-300';
         };
 
-        const getClozeClass = (segment, index) => {
+        // 核心保护：增加 String() 强转
+        const getClozeClass = (segment) => {
             const itemId = currentReciteItem.value ? currentReciteItem.value.id : null;
-            const state = (itemId && itemGradedStates.value[itemId]) ? itemGradedStates.value[itemId][index] : 'editing';
+            const state = (itemId && itemGradedStates.value[itemId]) ? itemGradedStates.value[itemId][segment.blankIdx] : 'editing';
 
             if (state !== 'graded') {
                 if (segment.userVal) return 'border-blue-400 text-blue-600 font-bold bg-blue-50';
                 return 'border-blue-200 text-transparent hover:border-blue-300';
             }
-            if ((segment.userVal || '').trim() === segment.answer.trim()) return 'border-orange-400 text-orange-500 font-bold bg-orange-50';
+            
+            const cleanUser = String(segment.userVal || '').replace(/\s+/g, '');
+            const cleanAns = String(segment.answer || '').replace(/\s+/g, '');
+
+            if (cleanUser === cleanAns) return 'border-orange-400 text-orange-500 font-bold bg-orange-50';
             return 'border-red-400 text-red-500 font-bold bg-red-50 line-through decoration-red-300';
         };
 
@@ -573,15 +602,20 @@ export default {
             initClozeContent(item);
         };
 
+        // 核心保护：防止 item.content 为空导致 .split 报错
         const initClozeContent = (item) => {
             if (props.mode === 'cloze') {
                 const regex = /(\{\{.+?\}\})/g;
-                const parts = item.content.split(regex);
-                parsedClozeContent.value = parts.map((part, index) => {
+                const parts = String(item.content || '').split(regex);
+                let blankIdx = 0; 
+
+                parsedClozeContent.value = parts.map((part) => {
                     if (part.startsWith('{{') && part.endsWith('}}')) {
                         const answer = part.slice(2, -2);
-                        const savedVal = userAnswers.value[item.id] ? userAnswers.value[item.id][index] : '';
-                        return { type: 'cloze', val: part, userVal: savedVal, answer: answer };
+                        const currentBlankIdx = blankIdx++; 
+                        const savedVal = userAnswers.value[item.id] ? userAnswers.value[item.id][currentBlankIdx] : '';
+                        
+                        return { type: 'cloze', val: part, userVal: savedVal, answer: answer, blankIdx: currentBlankIdx };
                     } else {
                         return { type: 'text', val: part };
                     }
@@ -600,14 +634,20 @@ export default {
         };
 
         const handleInputFocus = (index) => { activeInputIndex.value = index; };
-        const handleInputChange = (index) => {
+        
+        const handleInputChange = (idx) => {
             if (!currentReciteItem.value) return;
             const itemId = currentReciteItem.value.id;
+            const segment = parsedClozeContent.value[idx];
+            const blankIdx = segment.blankIdx;
+
             if (!userAnswers.value[itemId]) userAnswers.value[itemId] = {};
-            userAnswers.value[itemId][index] = parsedClozeContent.value[index].userVal;
+            userAnswers.value[itemId][blankIdx] = segment.userVal;
+            
             if (!itemGradedStates.value[itemId]) itemGradedStates.value[itemId] = {};
-            itemGradedStates.value[itemId][index] = 'editing';
+            itemGradedStates.value[itemId][blankIdx] = 'editing';
         };
+
         const focusNextInput = (currentIndex) => {
             let nextIndex = currentIndex + 1;
             while (nextIndex < parsedClozeContent.value.length) {
@@ -628,22 +668,33 @@ export default {
 
                 currentReciteList.value.forEach(item => {
                     const splitRegex = /(\{\{.+?\}\})/g;
-                    const parts = item.content.split(splitRegex);
+                    // 核心保护：防止空字符引发错误
+                    const parts = String(item.content || '').split(splitRegex);
                     
                     let isItemCorrect = true;
                     let hasCloze = false;
+                    let blankIdx = 0; 
 
-                    parts.forEach((part, idx) => {
+                    parts.forEach((part) => {
                         if (part.startsWith('{{') && part.endsWith('}}')) {
                             hasCloze = true;
                             totalBlanks++;
                             const standardAns = part.slice(2, -2);
-                            const userAns = userAnswers.value[item.id] ? userAnswers.value[item.id][idx] : '';
-                            const isSegmentCorrect = (userAns || '').trim() === standardAns.trim();
+                            const userAns = userAnswers.value[item.id] ? userAnswers.value[item.id][blankIdx] : '';
+                            
+                            // 核心保护与判题容错机制
+                            const cleanStandard = String(standardAns || '').replace(/\s+/g, '');
+                            const cleanUser = String(userAns || '').replace(/\s+/g, '');
+                            const isSegmentCorrect = cleanUser === cleanStandard;
+
                             if (isSegmentCorrect) correctBlanks++; else wrongBlanks++;
+                            
                             if (!itemGradedStates.value[item.id]) itemGradedStates.value[item.id] = {};
-                            itemGradedStates.value[item.id][idx] = 'graded';
+                            itemGradedStates.value[item.id][blankIdx] = 'graded';
+                            
                             if (!isSegmentCorrect) isItemCorrect = false;
+                            
+                            blankIdx++; 
                         }
                     });
 
@@ -736,9 +787,14 @@ export default {
             } catch (e) { alert('⚠️ 上传错误'); }
             event.target.value = '';
         };
+
         const formatClozePreview = (text) => text ? text.replace(/\{\{(.+?)\}\}/g, '<span class="border-b-2 border-amber-400 font-bold text-amber-600 px-1 bg-amber-50 rounded mx-0.5">$1</span>') : '';
 
-        if (props.initialAction === 'add') nextTick(() => openAddModal(null));
+        onMounted(() => {
+            renderMath(); 
+            if (props.initialAction === 'add') nextTick(() => openAddModal(null));
+        });
+
         onUnmounted(() => stopSpeech());
 
         return {
