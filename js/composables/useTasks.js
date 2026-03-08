@@ -32,13 +32,31 @@ export function useTasks(API_BASE) {
     const newTask = ref({ ...defaultTaskState });
     const INTERVALS = [0, 1, 2, 4, 7, 15];
 
-    // --- 数据加载与保存 ---
+    // --- 数据加载与保存 (解绑分类) ---
+    const loadCategories = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/categories`);
+            categories.value = await res.json();
+        } catch (e) { console.error(e); }
+    };
+
+    const saveCategories = async () => {
+        await fetch(`${API_BASE}/categories`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(categories.value)
+        });
+    };
+
     const loadTasks = async () => {
         try {
             const res = await fetch(`${API_BASE}/data`);
             const data = await res.json();
             if (data.tasks) tasks.value = data.tasks;
-            if (data.categories) categories.value = data.categories;
+            
+            // 独立加载分类
+            await loadCategories();
+            
             isDataLoaded.value = true;
         } catch (e) { console.error(e); }
     };
@@ -48,21 +66,26 @@ export function useTasks(API_BASE) {
         await fetch(`${API_BASE}/data`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tasks: tasks.value, categories: categories.value })
+            body: JSON.stringify({ tasks: tasks.value }) // 不再同时保存 categories
         });
     };
-    watch([tasks, categories], saveTasks, { deep: true });
+    
+    // 关键：现在只监听 tasks 的变化，不再监听 categories
+    watch(tasks, saveTasks, { deep: true });
 
-    // --- 分类管理 ---
-    const addCategory = (name) => {
+    // --- 分类管理 (独立保存) ---
+    const addCategory = async (name) => {
         const trimmed = name.trim();
         if (trimmed && !categories.value.includes(trimmed)) {
             categories.value.push(trimmed);
+            await saveCategories(); // 独立触发保存
         }
     };
-    const deleteCategory = (name) => {
+    
+    const deleteCategory = async (name) => {
         if (confirm(`确定要删除分类 "${name}" 吗？`)) {
             categories.value = categories.value.filter(c => c !== name);
+            await saveCategories(); // 独立触发保存
         }
     };
 

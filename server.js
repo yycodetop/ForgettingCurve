@@ -19,6 +19,10 @@ app.use('/api/vocabulary', require('./routes/vocabulary'));
 app.use('/api/concepts', require('./routes/concepts')); 
 app.use('/api/feynman', require('./routes/feynman')); // [新增] 费曼路由
 app.use('/api/occlusion', require('./routes/imageOcclusion')); // [新增] 图像遮挡路由
+// [新增] 注册错题日志路由
+app.use('/api/mistakelog', require('./routes/mistakeLogs'));
+// [新增] 注册独立的分类路由
+app.use('/api/categories', require('./routes/categories'));
 
 app.listen(PORT, () => {
     console.log(`Memory OS running at http://localhost:${PORT}`);

@@ -1,24 +1,5 @@
 [
   {
-    "id": 1771935639559,
-    "type": "cloze",
-    "subject": "数学",
-    "grade": "初一",
-    "title": "勾股定理",
-    "content": "勾股定理的公式为$a^2+b^2=${{$c^2$}}",
-    "orderNum": 1,
-    "isPinned": false,
-    "lastReview": "2026-02-24T12:45:13.719Z",
-    "status": "correct",
-    "reviewSchedule": [
-      "2026-02-25",
-      "2026-02-26",
-      "2026-02-28",
-      "2026-03-03",
-      "2026-03-11"
-    ]
-  },
-  {
     "id": 1771934900622,
     "type": "cloze",
     "subject": "科学",

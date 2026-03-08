@@ -20,6 +20,7 @@ import ConceptApp from './apps/ConceptApp.js';
 import FeynmanApp from './apps/FeynmanApp.js';
 import ImageOcclusionApp from './apps/ImageOcclusionApp.js'; 
 import TheDock from './components/TheDock.js';
+import MistakeApp from './apps/MistakeApp.js';
 
 const app = createApp({
     components: { 
@@ -28,7 +29,8 @@ const app = createApp({
         ConceptApp, 
         FeynmanApp, 
         ImageOcclusionApp, 
-        TheDock 
+        TheDock,
+        MistakeApp
     },
     template: `
     <div id="app" v-cloak class="h-full flex flex-col relative">
@@ -40,6 +42,7 @@ const app = createApp({
                 <span v-else-if="currentApp === 'cloze'"> 概念实验室</span> 
                 <span v-else-if="currentApp === 'feynman'"> 费曼自测</span>
                 <span v-else-if="currentApp === 'occlusion'"> 图像遮挡</span>
+                <span v-else-if="currentApp === 'mistakes'"> 错题日志</span>
             </div>
             <div v-if="currentApp === 'dashboard'" class="flex items-center bg-slate-200/50 rounded-full p-1 text-sm">
                 <button @click="changeMonth(-1)" class="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center text-slate-500 transition">←</button>
@@ -82,6 +85,11 @@ const app = createApp({
                 @delete-occlusion="deleteOcclusion"
                 @back-home="handleSwitchApp('dashboard')"
             ></image-occlusion-app>
+
+            <mistake-app v-if="currentApp === 'mistakes'"
+                :categories="categories"
+                @create-ebbinghaus-task="handleCreateMistakeTask"
+            ></mistake-app>
 
         </main>
 
@@ -275,7 +283,22 @@ const app = createApp({
         const handleUpdateConcept = (id, data) => {
             conceptModule.updateConcept(id, data);
         };
-
+        // 在 setup() 内部添加
+        const handleCreateMistakeTask = async (taskData) => {
+            try {
+                const res = await fetch('/api/data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(taskData)
+                });
+                const newTaskInfo = await res.json();
+                tasks.value.push(newTaskInfo); // 将新任务推入总任务列表
+                // 如果刚好是今天的任务，重新计算当天任务列表
+                calculateCurrentDayTasks(); 
+            } catch (err) {
+                console.error("创建艾宾浩斯复习任务失败", err);
+            }
+        };
         return {
             currentApp,
             englishTasks,
@@ -296,7 +319,8 @@ const app = createApp({
             handleConceptImport,
             handleQuickAddConcept,
             handleDashboardAddConcept,
-            handleUpdateConcept
+            handleUpdateConcept,
+            handleCreateMistakeTask
         };
     }
 });
