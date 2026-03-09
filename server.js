@@ -25,6 +25,8 @@ app.use('/api/mistakelog', require('./routes/mistakeLogs'));
 app.use('/api/categories', require('./routes/categories'));
 // [新增] 注册学习日志路由
 app.use('/api/learninglog', require('./routes/learningLogs'));
+// [新增] 注册 AI 辅助路由
+app.use('/api/ai', require('./routes/ai'));
 
 app.listen(PORT, () => {
     console.log(`Memory OS running at http://localhost:${PORT}`);

@@ -1,6 +1,6 @@
 /**
  * js/apps/EnglishApp.js
- * 英语工作室 (新增：单词本模糊搜索、朗读中途秒退优化)
+ * 英语工作室 (包含：模糊搜索、朗读优化、AI横向三列沉浸式记忆解码、连线测试Bug修复)
  */
 import { ref, computed, watch, nextTick, onUnmounted, onMounted } from 'vue';
 import { useTTS } from '../composables/useTTS.js';
@@ -15,6 +15,7 @@ export default {
         posOptions: { type: Array, default: () => [] }
     },
     emits: ['selectBook', 'createBook', 'updateBook', 'deleteBook', 'exportBook', 'addWord', 'updateWord', 'deleteWord', 'upload', 'download', 'request-recitation'],
+    
     setup(props, { emit }) {
         const { speak, speakQueue, stop: stopSpeaking, voices, selectedVoiceURI, rate: ttsRate, isSpeaking } = useTTS();
 
@@ -22,7 +23,6 @@ export default {
         const filterGrade = ref('');
         const filterTerm = ref('');
         const filterType = ref('');
-
         const gradeOptions = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '初一', '初二', '初三', '高一', '高二', '高三', '其他'];
         const termOptions = ['第一学期', '第二学期', '全学年'];
 
@@ -43,18 +43,26 @@ export default {
         const localNewWord = ref({ word: '', phonetic: '', pos: 'n.', meaning: '' });
         const isFetching = ref(false); 
         const isUpdatingPhonetics = ref(false);
-        
-        // [新增] 模糊搜索关键字
         const searchQuery = ref('');
 
-        // 错词本与艾宾浩斯
+        // --- 3. AI 记忆解码器状态 ---
+        const decoderState = ref({ 
+            show: false, 
+            isLoading: false, 
+            word: '', 
+            content: '',
+            parsedContent: [], // 用于存储拆解后的三列数据
+            isParsed: false    // 标记是否成功拆解
+        });
+
+        // --- 4. 错词本与艾宾浩斯 ---
         const showMistakeBook = ref(false);
         const mistakeList = ref([]);
         const selectedMistakeDate = ref(null); 
         const ebbinghausReviewList = ref([]);
         const isEbbinghausReview = ref(false);
 
-        // 学习状态
+        // --- 5. 学习状态 (默写/背诵/朗读等) ---
         const showReciteSetup = ref(false);
         const reciteConfig = ref({ 
             selectedBookIds: [], order: 'random', mode: 'unlimited', studyMode: 'recite', duration: 10,
@@ -79,7 +87,7 @@ export default {
         const memorizeSessionId = ref(0);
         const readSessionId = ref(0); 
 
-        // 连线测试状态
+        // --- 6. 连线测试状态 ---
         const isMatchingGame = ref(false);
         const matchGameMode = ref('playing'); 
         const matchTotalQueue = ref([]); 
@@ -95,16 +103,12 @@ export default {
         const matchNextOrder = ref(1);     
         const matchResults = ref([]);    
 
-        // --- Computed ---
-        // [修改] 结合模糊搜索进行数据过滤
+        // --- Computed 属性 ---
         const filteredVocab = computed(() => {
             let list = props.vocabulary || [];
             if (searchQuery.value.trim()) {
                 const q = searchQuery.value.trim().toLowerCase();
-                list = list.filter(v => 
-                    v.word.toLowerCase().includes(q) || 
-                    v.meaning.toLowerCase().includes(q)
-                );
+                list = list.filter(v => v.word.toLowerCase().includes(q) || v.meaning.toLowerCase().includes(q));
             }
             return list;
         });
@@ -122,7 +126,7 @@ export default {
             if (newVal) { 
                 localNewWord.value.pos = newVal.type === 'word' ? 'n.' : 'phrase'; 
                 editingId.value = null; 
-                searchQuery.value = ''; // 切换单词本时清空搜索框
+                searchQuery.value = ''; 
             } 
         }, { immediate: true });
         
@@ -131,7 +135,10 @@ export default {
                 if (reciteConfig.value.studyMode === 'match') initMatchGame(newData);
                 else initRecitationSession(newData);
                 isWaitingForReciteData.value = false;
-            } else if (isWaitingForReciteData.value && newData.length === 0) { alert("所选单词本没有单词！"); isWaitingForReciteData.value = false; }
+            } else if (isWaitingForReciteData.value && newData.length === 0) { 
+                alert("所选单词本没有单词！"); 
+                isWaitingForReciteData.value = false; 
+            }
         });
 
         // --- 辅助函数 ---
@@ -183,35 +190,82 @@ export default {
         const isSelected = (item) => matchSelection.value && matchSelection.value.cardId === item.cardId;
 
         // --- 业务逻辑 ---
+        
+        // [核心升级] AI 解码方法：增加内容智能拆分与清洗逻辑
+        const openMemoryDecoder = async (wordStr) => {
+            decoderState.value = { show: true, isLoading: true, word: wordStr, content: '', parsedContent: [], isParsed: false };
+            
+            try {
+                const res = await fetch('/api/ai/memory-decoder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word: wordStr })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) { 
+                    // 1. 强力清洗 Markdown 标记
+                    let text = data.content.replace(/```(html)?\n?/gi, '').replace(/```\n?/g, '');
+                    
+                    // 2. 尝试寻找三大模块的标志性 Emoji
+                    const split1 = text.indexOf('🧩');
+                    const split2 = text.indexOf('💡');
+                    const split3 = text.indexOf('🎯');
+                    
+                    // 3. 如果成功识别到了三个部分，进行分割
+                    if (split1 !== -1 && split2 !== -1 && split3 !== -1) {
+                        const raw1 = text.substring(split1, split2);
+                        const raw2 = text.substring(split2, split3);
+                        const raw3 = text.substring(split3);
+
+                        // 清洗函数：剥离掉大标题 <b>...</b> 和多余的空标签
+                        const cleanPart = (str) => {
+                            let s = str.replace(/[\s\S]*?<\/b>[:：]?\s*/i, '');
+                            s = s.replace(/^(?:<\/p>|<br\s*\/?>)\s*/i, '');
+                            return s.trim();
+                        };
+
+                        decoderState.value.parsedContent = [
+                             { title: '词根词缀', icon: '🧩', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', content: cleanPart(raw1) },
+                             { title: '趣味记忆', icon: '💡', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', content: cleanPart(raw2) },
+                             { title: '黄金搭配', icon: '🎯', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', content: cleanPart(raw3) }
+                        ];
+                        decoderState.value.isParsed = true;
+                    } else {
+                        // 降级显示：如果 AI 没有按照格式返回，则直接显示完整文本并修复高亮
+                        text = text.replace(/<b>/gi, '<b class="text-amber-400 font-black px-1">');
+                        decoderState.value.content = text;
+                        decoderState.value.isParsed = false;
+                    }
+                } 
+                else { 
+                    decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">${data.error}</div>`; 
+                }
+            } catch (err) {
+                decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">网络请求失败，请检查 Node.js Server 是否开启。</div>`;
+            } finally {
+                decoderState.value.isLoading = false;
+            }
+        };
+
         const openCreateModal = () => { 
             isEditingBook.value = false; 
-            newBookForm.value = { 
-                id: '', name: '', icon: 'fas fa-book', sortOrder: 1,
-                type: filterType.value || 'word', 
-                grade: filterGrade.value || '其他', 
-                term: filterTerm.value || '全学年'
-            }; 
+            newBookForm.value = { id: '', name: '', type: 'word', icon: 'fas fa-book', sortOrder: 1, type: filterType.value || 'word', grade: filterGrade.value || '其他', term: filterTerm.value || '全学年' }; 
             showCreateModal.value = true; 
         };
         const openEditBookModal = () => { 
             if (!props.currentBook) return; 
             isEditingBook.value = true; 
-            newBookForm.value = { 
-                ...props.currentBook,
-                grade: props.currentBook.grade || '其他',
-                term: props.currentBook.term || '全学年',
-                sortOrder: props.currentBook.sortOrder || 1
-            }; 
+            newBookForm.value = { ...props.currentBook, grade: props.currentBook.grade || '其他', term: props.currentBook.term || '全学年', sortOrder: props.currentBook.sortOrder || 1 }; 
             showCreateModal.value = true; 
         };
-        
         const handleSaveBook = () => {
             if (!newBookForm.value.name) return alert("请输入名称");
             if (isEditingBook.value) emit('updateBook', newBookForm.value.id, newBookForm.value);
             else emit('createBook', { ...newBookForm.value });
             showCreateModal.value = false;
         };
-        
         const handleAddWord = async () => {
             if (!localNewWord.value.word || !localNewWord.value.meaning) return;
             isFetching.value = true;
@@ -221,10 +275,8 @@ export default {
             localNewWord.value.word = ''; localNewWord.value.meaning = '';
             isFetching.value = false;
         };
-
         const startEdit = (item) => { editingId.value = item.id; editForm.value = { ...item }; };
         const cancelEdit = () => { editingId.value = null; };
-        
         const saveEdit = async () => {
             isFetching.value = true;
             let phonetic = editForm.value.phonetic;
@@ -233,13 +285,11 @@ export default {
             editingId.value = null;
             isFetching.value = false;
         };
-
         const handleUpdateAllPhonetics = async () => {
             if (isUpdatingPhonetics.value) return;
             if (!props.currentBook || props.currentBook.type !== 'word') return alert("仅单词本支持音标自动更新功能。");
             if (filteredVocab.value.length === 0) return alert("当前单词本为空。");
             if (!confirm(`确定要自动更新当前 ${filteredVocab.value.length} 个单词的音标吗？\n这可能需要一些时间，请勿关闭页面。`)) return;
-
             isUpdatingPhonetics.value = true;
             let updateCount = 0;
             const items = [...filteredVocab.value];
@@ -280,44 +330,28 @@ export default {
             clearTimeout(autoNextTimer.value); stopSpeaking(); memorizeSessionId.value++; readSessionId.value++;
             reciteErrorCount.value = 0; reciteInput.value = ''; reciteStatus.value = 'neutral'; showAnswer.value = false;
             
-            if (reciteConfig.value.studyMode === 'read') {
-                showHintMeaning.value = true; showHintWord.value = true; startAutoRead();
-            } else if (reciteConfig.value.studyMode === 'memorize') {
-                memorizeStage.value = 0; showHintMeaning.value = true; showHintWord.value = true; startMemorizeFlash();
-            } else if (reciteConfig.value.studyMode === 'dictate') { 
-                showHintMeaning.value = false; showHintWord.value = false; setTimeout(() => speak(currentReciteWord.value?.word, 'en'), 300); focusInput(); 
-            } else { 
-                showHintMeaning.value = true; showHintWord.value = false; focusInput(); 
-            }
+            if (reciteConfig.value.studyMode === 'read') { showHintMeaning.value = true; showHintWord.value = true; startAutoRead(); } 
+            else if (reciteConfig.value.studyMode === 'memorize') { memorizeStage.value = 0; showHintMeaning.value = true; showHintWord.value = true; startMemorizeFlash(); } 
+            else if (reciteConfig.value.studyMode === 'dictate') { showHintMeaning.value = false; showHintWord.value = false; setTimeout(() => speak(currentReciteWord.value?.word, 'en'), 300); focusInput(); } 
+            else { showHintMeaning.value = true; showHintWord.value = false; focusInput(); }
         };
 
-        // [修改] 优化后的可中断自动朗读逻辑
         const startAutoRead = async () => {
             const currentSession = readSessionId.value;
             const word = currentReciteWord.value;
             if (!word) return;
-
             for (let i = 0; i < reciteConfig.value.readRepeat; i++) {
-                // 如果用户点击了退出，立刻终止
                 if (readSessionId.value !== currentSession || !isReciting.value) return;
-                
                 await speak(word.word, 'en');
-                
                 if (readSessionId.value !== currentSession || !isReciting.value) return;
-                
-                // 将大块的等待时间拆分成极小的轮询时间片，实现“秒断”功能
                 const waitTime = reciteConfig.value.readInterval * 1000;
                 const step = 100;
                 for(let t = 0; t < waitTime; t += step) {
-                    if (readSessionId.value !== currentSession || !isReciting.value) return; // 轮询检查退出状态
+                    if (readSessionId.value !== currentSession || !isReciting.value) return;
                     await new Promise(resolve => setTimeout(resolve, Math.min(step, waitTime - t)));
                 }
             }
-            
-            // 正常结束且未被中断，自动进入下一个
-            if (readSessionId.value === currentSession && isReciting.value) {
-                nextWord();
-            }
+            if (readSessionId.value === currentSession && isReciting.value) nextWord();
         };
 
         const startMemorizeFlash = async () => {
@@ -377,15 +411,21 @@ export default {
         const exitRecitation = () => { stopSpeaking(); isReciting.value = false; clearTimeout(autoNextTimer.value); clearInterval(reciteTimer.value); memorizeSessionId.value++; readSessionId.value++; window.removeEventListener('keydown', handleKeydown); if (isEbbinghausReview.value) { isEbbinghausReview.value = false; loadMistakesData(); } };
         const focusInput = () => nextTick(() => inputRef.value?.focus());
 
-        // 连线游戏逻辑保持不变
+        // 连线游戏逻辑
         const genCardId = (col, item) => `${col}-${item.id}`;
         const initMatchGame = (data) => { let allData = [...data]; if (reciteConfig.value.order === 'random') allData.sort(() => Math.random() - 0.5); matchTotalQueue.value = allData; matchResults.value = []; matchCurrentRound.value = 0; matchGameMode.value = 'playing'; isMatchingGame.value = true; startMatchRound(); };
         const startMatchRound = () => {
-            const start = matchCurrentRound.value * matchBatchSize; const currentBatch = matchTotalQueue.value.slice(start, start + matchBatchSize);
+            const start = matchCurrentRound.value * matchBatchSize; 
+            const currentBatch = matchTotalQueue.value.slice(start, start + matchBatchSize);
             if (currentBatch.length === 0) { matchGameMode.value = 'summary'; return; }
-            const splitIndex = 10; const setA = currentBatch.slice(0, splitIndex); const setB = currentBatch.slice(splitIndex);
-            const allMeanings = [...currentBatch].sort(() => Math.random() - 0.5); const meaningsPart1 = allMeanings.slice(0, splitIndex); const meaningsPart2 = allMeanings.slice(splitIndex);
-            matchCol1.value = meaningsPart1.map(i => ({ ...i, type: 'meaning', col: 1, cardId: genCardId(1, i) })); matchCol2.value = setA.map(i => ({ ...i, type: 'word', col: 2, cardId: genCardId(2, i) }));
+            const splitIndex = 10; 
+            const setA = currentBatch.slice(0, splitIndex); 
+            const setB = currentBatch.slice(splitIndex);
+            const allMeanings = [...currentBatch].sort(() => Math.random() - 0.5); 
+            const meaningsPart1 = allMeanings.slice(0, splitIndex); 
+            const meaningsPart2 = allMeanings.slice(splitIndex);
+            matchCol1.value = meaningsPart1.map(i => ({ ...i, type: 'meaning', col: 1, cardId: genCardId(1, i) })); 
+            matchCol2.value = setA.map(i => ({ ...i, type: 'word', col: 2, cardId: genCardId(2, i) }));
             if (setB.length > 0) matchCol3.value = setB.map(i => ({ ...i, type: 'word', col: 3, cardId: genCardId(3, i) })); else matchCol3.value = [];
             if (meaningsPart2.length > 0) matchCol4.value = meaningsPart2.map(i => ({ ...i, type: 'meaning', col: 4, cardId: genCardId(4, i) })); else matchCol4.value = [];
             matchPairs.value = {}; matchPairOrderMap.value = {}; matchNextOrder.value = 1; matchSelection.value = null; 
@@ -396,7 +436,23 @@ export default {
             if (!matchSelection.value || matchSelection.value.type === item.type) { if (matchSelection.value && matchSelection.value.cardId === item.cardId) matchSelection.value = null; else matchSelection.value = item; return; }
             const sel = matchSelection.value; matchPairs.value[sel.cardId] = item.cardId; matchPairs.value[item.cardId] = sel.cardId; matchPairOrderMap.value[sel.cardId] = matchNextOrder.value; matchPairOrderMap.value[item.cardId] = matchNextOrder.value; matchNextOrder.value++; matchSelection.value = null; 
         };
-        const submitMatchRound = () => { const processGroup = (words) => { words.forEach(w => { const linkedCardId = matchPairs.value[w.cardId]; let partnerItem = null; if (linkedCardId) partnerItem = [...matchCol1.value, ...matchCol4.value].find(i => i.cardId === linkedCardId); const isCorrect = partnerItem && partnerItem.id === w.id; const userMeaning = partnerItem ? partnerItem.meaning : "(未选择)"; if (!isCorrect) logMistake(w); matchResults.value.push({ word: w.word, correctMeaning: w.meaning, userMeaning: userMeaning, isCorrect: isCorrect }); }); }; processGroup(matchCol2.value); if (matchCol3.value.length > 0) processGroup(matchCol3.value); matchCurrentRound.value++; startMatchRound(); };
+        const submitMatchRound = () => { 
+            const processGroup = (words) => { 
+                words.forEach(w => { 
+                    const linkedCardId = matchPairs.value[w.cardId]; 
+                    let partnerItem = null; 
+                    if (linkedCardId) partnerItem = [...matchCol1.value, ...matchCol4.value].find(i => i.cardId === linkedCardId); 
+                    const isCorrect = partnerItem && partnerItem.id === w.id; 
+                    const userMeaning = partnerItem ? partnerItem.meaning : "(未选择)"; 
+                    if (!isCorrect) logMistake(w); 
+                    matchResults.value.push({ word: w.word, correctMeaning: w.meaning, userMeaning: userMeaning, isCorrect: isCorrect }); 
+                }); 
+            }; 
+            processGroup(matchCol2.value); 
+            if (matchCol3.value.length > 0) processGroup(matchCol3.value); 
+            matchCurrentRound.value++; 
+            startMatchRound(); 
+        };
         const exitMatchGame = () => { isMatchingGame.value = false; matchResults.value = []; };
 
         onUnmounted(() => { stopSpeaking(); clearTimeout(autoNextTimer.value); clearInterval(reciteTimer.value); window.removeEventListener('keydown', handleKeydown); });
@@ -405,30 +461,25 @@ export default {
             showCreateModal, isEditingBook, newBookForm, editingId, editForm, localNewWord, isFetching,
             openCreateModal, openEditBookModal, handleSaveBook, handleAddWord, startEdit, saveEdit, cancelEdit, getPosColor,
             handleExport: () => emit('exportBook', props.currentBook?.id), handleDownload: () => emit('download'),
-            filteredVocab, searchQuery, // [导出] searchQuery
-            
+            filteredVocab, searchQuery,
             filterGrade, filterTerm, filterType, gradeOptions, termOptions, filteredBooksList,
-            
             showReciteSetup, reciteConfig, openReciteSetup, toggleBookSelection, handleStartRecitation,
             isReciting, currentReciteWord, reciteInput, reciteStatus, showAnswer, showHintMeaning, showHintWord,
             reciteProgress, inputRef, reciteIndex, reciteQueue, wordSlots, reciteTimeRemaining, formatTime,
             handleReciteInput, checkReciteAnswer, exitRecitation, nextWord, prevWord, focusInput,
-            
             isMatchingGame, matchGameMode, matchCurrentRound, matchTotalQueue, matchCol1, matchCol2, matchCol3, matchCol4, matchSelection,
             handleMatchClick, getPairOrder, isPaired, isSelected, submitMatchRound, exitMatchGame, matchCorrectList, matchWrongList,
-            
             memorizeStage, flashCount, voices, selectedVoiceURI, ttsRate, isSpeaking, replayAudio,
             getSetupTitle: () => ({ 'recite': '默写设置', 'dictate': '听写设置', 'match': '连线测试设置', 'memorize': '背诵设置', 'read': '朗读设置' }[reciteConfig.value.studyMode] || '学习设置'),
-            
             showMistakeBook, mistakeList, mistakeGroups, selectedMistakeDate, sortedMistakeDates, openMistakeBook,
             ebbinghausReviewList, isEbbinghausReview, startEbbinghausReview,
             autoFillPhonetic: fetchPhonetic, isFetchingPhonetic: isFetching, handleUpdateAllPhonetics, isUpdatingPhonetics,
-            
-            speakWord: (word) => speak(word, 'en')
+            decoderState, openMemoryDecoder, speakWord: (word) => speak(word, 'en')
         };
     },
     template: `
     <div class="h-full flex gap-6">
+        
         <div class="flex-[2] bg-white rounded-3xl shadow-sm border border-slate-100 flex overflow-hidden">
             <div class="w-56 bg-slate-50 border-r border-slate-100 flex flex-col py-4 gap-3 shrink-0 h-full">
                 <div class="px-3 flex flex-col gap-2">
@@ -478,9 +529,19 @@ export default {
 
             <div class="flex-1 flex flex-col min-w-0" v-if="currentBook">
                 <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
-                    <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg"><i :class="currentBook.icon"></i></div><div><h3 class="font-bold text-slate-800 leading-tight flex items-center gap-2">{{ currentBook.name }}<button @click="openEditBookModal" class="text-slate-300 hover:text-indigo-500 text-xs transition"><i class="fas fa-pen"></i></button></h3><p class="text-xs text-slate-400">{{ vocabulary.length }} 条 · {{ currentBook.grade || '未分级' }} · {{ currentBook.term || '全学年' }}</p></div></div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
+                            <i :class="currentBook.icon"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 leading-tight flex items-center gap-2">
+                                {{ currentBook.name }}
+                                <button @click="openEditBookModal" class="text-slate-300 hover:text-indigo-500 text-xs transition"><i class="fas fa-pen"></i></button>
+                            </h3>
+                            <p class="text-xs text-slate-400">{{ vocabulary.length }} 条 · {{ currentBook.grade || '未分级' }} · {{ currentBook.term || '全学年' }}</p>
+                        </div>
+                    </div>
                     <div class="flex gap-2 items-center">
-                        
                         <div class="relative mr-2 group">
                             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs group-focus-within:text-indigo-500 transition-colors"></i>
                             <input v-model="searchQuery" placeholder="搜索单词或释义..." class="pl-8 pr-8 py-1.5 w-48 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none transition bg-slate-50 focus:bg-white text-slate-600">
@@ -491,7 +552,14 @@ export default {
                             <i class="fas" :class="isUpdatingPhonetics ? 'fa-circle-notch fa-spin' : 'fa-magic'"></i>
                         </button>
                         <div class="w-px h-6 bg-slate-100 mx-1"></div>
-                        <button @click="handleDownload" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition border border-slate-200" title="模板"><i class="fas fa-download text-xs"></i></button><label class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition cursor-pointer border border-indigo-100" title="导入"><i class="fas fa-file-import text-xs"></i><input type="file" class="hidden" accept=".xlsx" @change="(e) => $emit('upload', e)"></label><button @click="handleExport" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition border border-emerald-100" title="导出"><i class="fas fa-file-export text-xs"></i></button><button @click="$emit('deleteBook', currentBook.id)" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition border border-red-100" title="删除"><i class="fas fa-trash-alt text-xs"></i></button></div>
+                        <button @click="handleDownload" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition border border-slate-200" title="模板"><i class="fas fa-download text-xs"></i></button>
+                        <label class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition cursor-pointer border border-indigo-100" title="导入">
+                            <i class="fas fa-file-import text-xs"></i>
+                            <input type="file" class="hidden" accept=".xlsx" @change="(e) => $emit('upload', e)">
+                        </label>
+                        <button @click="handleExport" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition border border-emerald-100" title="导出"><i class="fas fa-file-export text-xs"></i></button>
+                        <button @click="$emit('deleteBook', currentBook.id)" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition border border-red-100" title="删除"><i class="fas fa-trash-alt text-xs"></i></button>
+                    </div>
                 </div>
                 <div class="p-3 bg-slate-50/50 border-b border-slate-100 flex gap-2 items-center">
                     <input v-model="localNewWord.word" :placeholder="currentBook.type === 'word' ? 'New Word' : 'New Phrase'" class="w-1/3 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 focus:outline-none bg-white font-bold" @keyup.enter="handleAddWord">
@@ -502,13 +570,55 @@ export default {
                 </div>
                 <div class="flex-1 overflow-y-auto custom-scrollbar p-0">
                     <table class="w-full text-sm text-left border-collapse">
-                        <thead class="text-slate-400 bg-white sticky top-0 z-10 text-xs uppercase font-bold"><tr><th class="p-3 pl-5">内容</th><th v-if="currentBook.type === 'word'" class="p-3">音标</th><th v-if="currentBook.type === 'word'" class="p-3">词性</th><th class="p-3">释义</th><th class="p-3 text-center">操作</th></tr></thead>
-                        <tbody class="divide-y divide-slate-50"><tr v-for="v in filteredVocab" :key="v.id" class="group hover:bg-indigo-50/20 transition-colors"><template v-if="editingId !== v.id"><td class="p-3 pl-5 font-bold text-slate-700 select-all">{{ v.word }}</td><td v-if="currentBook.type === 'word'" class="p-3 font-mono text-slate-400 text-xs">{{ v.phonetic }}</td><td v-if="currentBook.type === 'word'" class="p-3"><span class="text-[10px] px-1.5 py-0.5 rounded border font-bold whitespace-nowrap" :class="getPosColor(v.pos)">{{ v.pos }}</span></td><td class="p-3 text-slate-600">{{ v.meaning }}</td><td class="p-3 text-center flex justify-center gap-2">
-                            <button @click="speakWord(v.word)" class="text-blue-500 bg-blue-50 p-1.5 rounded hover:bg-blue-100 transition" title="朗读此词"><i class="fas fa-volume-up"></i></button>
-                            <button @click="startEdit(v)" class="text-indigo-500 bg-indigo-50 p-1.5 rounded hover:bg-indigo-100 transition" title="编辑"><i class="fas fa-pen"></i></button>
-                            <button @click="$emit('deleteWord', v.id)" class="text-red-400 bg-red-50 p-1.5 rounded hover:bg-red-100 transition" title="删除"><i class="fas fa-times"></i></button>
-                        </td></template><template v-else><td class="p-3 pl-5"><input v-model="editForm.word" class="w-full px-2 py-1 border border-indigo-300 rounded text-slate-700 font-bold outline-none ring-2 ring-indigo-100"></td><td v-if="currentBook.type === 'word'" class="p-3"><input v-model="editForm.phonetic" class="w-full px-2 py-1 border border-indigo-300 rounded font-mono text-xs outline-none ring-2 ring-indigo-100"></td><td v-if="currentBook.type === 'word'" class="p-3"><select v-model="editForm.pos" class="w-full text-xs px-1 py-1 border border-indigo-300 rounded bg-white"><option v-for="o in posOptions" :value="o.value">{{ o.value }}</option></select></td><td class="p-3"><input v-model="editForm.meaning" class="w-full px-2 py-1 border border-indigo-300 rounded outline-none ring-2 ring-indigo-100" @keyup.enter="saveEdit"></td><td class="p-3 text-center flex justify-center gap-2"><button @click="saveEdit" class="text-emerald-500 bg-emerald-50 p-1.5 rounded hover:bg-emerald-100"><i class="fas fa-check"></i></button><button @click="cancelEdit" class="text-slate-400 bg-slate-50 p-1.5 rounded hover:bg-slate-100"><i class="fas fa-times"></i></button></td></template></tr>
-                        <tr v-if="filteredVocab.length === 0"><td :colspan="currentBook.type === 'word' ? 5 : 3" class="p-10 text-center text-slate-300"><div class="text-3xl mb-2 opacity-30">📚</div>{{ searchQuery ? '未找到匹配的单词或释义' : '暂无数据' }}</td></tr></tbody>
+                        <thead class="text-slate-400 bg-white sticky top-0 z-10 text-xs uppercase font-bold">
+                            <tr>
+                                <th class="p-3 pl-5">内容</th>
+                                <th v-if="currentBook.type === 'word'" class="p-3">音标</th>
+                                <th v-if="currentBook.type === 'word'" class="p-3">词性</th>
+                                <th class="p-3">释义</th>
+                                <th class="p-3 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            <tr v-for="v in filteredVocab" :key="v.id" class="group hover:bg-indigo-50/20 transition-colors">
+                                <template v-if="editingId !== v.id">
+                                    <td class="p-3 pl-5 font-bold text-slate-700 select-all">{{ v.word }}</td>
+                                    <td v-if="currentBook.type === 'word'" class="p-3 font-mono text-slate-400 text-xs">{{ v.phonetic }}</td>
+                                    <td v-if="currentBook.type === 'word'" class="p-3">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded border font-bold whitespace-nowrap" :class="getPosColor(v.pos)">{{ v.pos }}</span>
+                                    </td>
+                                    <td class="p-3 text-slate-600">{{ v.meaning }}</td>
+                                    <td class="p-3 text-center flex justify-center gap-2">
+                                        <button @click="openMemoryDecoder(v.word)" class="text-amber-500 bg-amber-50 p-1.5 rounded hover:bg-amber-100 transition shadow-sm border border-amber-100" title="AI 记忆解码">
+                                            <i class="fas fa-lightbulb"></i>
+                                        </button>
+                                        <button @click="speakWord(v.word)" class="text-blue-500 bg-blue-50 p-1.5 rounded hover:bg-blue-100 transition" title="朗读此词"><i class="fas fa-volume-up"></i></button>
+                                        <button @click="startEdit(v)" class="text-indigo-500 bg-indigo-50 p-1.5 rounded hover:bg-indigo-100 transition" title="编辑"><i class="fas fa-pen"></i></button>
+                                        <button @click="$emit('deleteWord', v.id)" class="text-red-400 bg-red-50 p-1.5 rounded hover:bg-red-100 transition" title="删除"><i class="fas fa-times"></i></button>
+                                    </td>
+                                </template>
+                                <template v-else>
+                                    <td class="p-3 pl-5"><input v-model="editForm.word" class="w-full px-2 py-1 border border-indigo-300 rounded text-slate-700 font-bold outline-none ring-2 ring-indigo-100"></td>
+                                    <td v-if="currentBook.type === 'word'" class="p-3"><input v-model="editForm.phonetic" class="w-full px-2 py-1 border border-indigo-300 rounded font-mono text-xs outline-none ring-2 ring-indigo-100"></td>
+                                    <td v-if="currentBook.type === 'word'" class="p-3">
+                                        <select v-model="editForm.pos" class="w-full text-xs px-1 py-1 border border-indigo-300 rounded bg-white">
+                                            <option v-for="o in posOptions" :value="o.value">{{ o.value }}</option>
+                                        </select>
+                                    </td>
+                                    <td class="p-3"><input v-model="editForm.meaning" class="w-full px-2 py-1 border border-indigo-300 rounded outline-none ring-2 ring-indigo-100" @keyup.enter="saveEdit"></td>
+                                    <td class="p-3 text-center flex justify-center gap-2">
+                                        <button @click="saveEdit" class="text-emerald-500 bg-emerald-50 p-1.5 rounded hover:bg-emerald-100"><i class="fas fa-check"></i></button>
+                                        <button @click="cancelEdit" class="text-slate-400 bg-slate-50 p-1.5 rounded hover:bg-slate-100"><i class="fas fa-times"></i></button>
+                                    </td>
+                                </template>
+                            </tr>
+                            <tr v-if="filteredVocab.length === 0">
+                                <td :colspan="currentBook.type === 'word' ? 5 : 3" class="p-10 text-center text-slate-300">
+                                    <div class="text-3xl mb-2 opacity-30">📚</div>
+                                    {{ searchQuery ? '未找到匹配的单词或释义' : '暂无数据' }}
+                                </td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
@@ -548,7 +658,6 @@ export default {
                 <h3 class="text-lg font-bold mb-4 text-slate-800">{{ isEditingBook ? '编辑本子属性' : '创建新单词/短语本' }}</h3>
                 <div class="space-y-4">
                     <div><label class="block text-xs font-bold text-slate-500 mb-1">名称</label><input v-model="newBookForm.name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-indigo-500 outline-none text-sm transition" placeholder="例如: 考研核心词"></div>
-                    
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">年级</label>
@@ -563,7 +672,6 @@ export default {
                             </select>
                         </div>
                     </div>
-
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">类型</label>
@@ -577,10 +685,19 @@ export default {
                             <input v-model.number="newBookForm.sortOrder" type="number" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-indigo-500 outline-none text-sm transition text-center">
                         </div>
                     </div>
-
-                    <div><label class="block text-xs font-bold text-slate-500 mb-1">图标</label><div class="flex flex-wrap gap-2"><button v-for="ic in bookIcons" :key="ic.icon" @click="newBookForm.icon = ic.icon" class="w-8 h-8 rounded border flex items-center justify-center transition" :class="newBookForm.icon === ic.icon ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-400 hover:border-slate-300 hover:bg-slate-50'"><i :class="ic.icon"></i></button></div></div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">图标</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button v-for="ic in bookIcons" :key="ic.icon" @click="newBookForm.icon = ic.icon" class="w-8 h-8 rounded border flex items-center justify-center transition" :class="newBookForm.icon === ic.icon ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-400 hover:border-slate-300 hover:bg-slate-50'">
+                                <i :class="ic.icon"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex gap-3 mt-6"><button @click="showCreateModal=false" class="flex-1 py-2 text-slate-500 hover:bg-slate-50 rounded-lg transition text-sm font-bold">取消</button><button @click="handleSaveBook" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md hover:bg-indigo-700 transition transform active:scale-95 text-sm">{{ isEditingBook ? '保存' : '创建' }}</button></div>
+                <div class="flex gap-3 mt-6">
+                    <button @click="showCreateModal=false" class="flex-1 py-2 text-slate-500 hover:bg-slate-50 rounded-lg transition text-sm font-bold">取消</button>
+                    <button @click="handleSaveBook" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md hover:bg-indigo-700 transition transform active:scale-95 text-sm">{{ isEditingBook ? '保存' : '创建' }}</button>
+                </div>
             </div>
         </div>
 
@@ -590,15 +707,13 @@ export default {
                     <h3 class="font-bold text-xl text-orange-500 flex items-center gap-2"><i class="fas fa-fire"></i> 错词回顾</h3>
                     <button @click="showMistakeBook=false" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"><i class="fas fa-times"></i></button>
                 </div>
-                
                 <div class="flex flex-1 overflow-hidden">
                     <div class="w-1/4 bg-slate-50 border-r border-slate-200 overflow-y-auto custom-scrollbar">
                         <div v-if="sortedMistakeDates.length === 0" class="p-4 text-center text-xs text-slate-400">暂无错词记录</div>
                         <div v-for="date in sortedMistakeDates" :key="date" 
                              @click="selectedMistakeDate = date"
                              class="p-4 cursor-pointer transition-all border-b border-slate-100 hover:bg-white group"
-                             :class="selectedMistakeDate === date ? 'bg-white border-l-4 border-l-orange-500 shadow-sm' : 'border-l-4 border-l-transparent text-slate-500'"
-                        >
+                             :class="selectedMistakeDate === date ? 'bg-white border-l-4 border-l-orange-500 shadow-sm' : 'border-l-4 border-l-transparent text-slate-500'">
                             <div class="font-bold text-sm mb-1 font-mono" :class="selectedMistakeDate === date ? 'text-slate-800' : ''">{{ date }}</div>
                             <div class="text-xs flex items-center justify-between">
                                 <span :class="selectedMistakeDate === date ? 'text-orange-500' : 'text-slate-400'">{{ mistakeGroups[date].length }} 词</span>
@@ -606,7 +721,6 @@ export default {
                             </div>
                         </div>
                     </div>
-
                     <div class="flex-1 bg-white overflow-y-auto p-6 custom-scrollbar">
                         <div v-if="selectedMistakeDate && mistakeGroups[selectedMistakeDate]">
                             <h4 class="font-bold text-lg mb-4 text-slate-700 flex items-center gap-2">
@@ -640,51 +754,261 @@ export default {
                     {{ getSetupTitle() }}
                 </h3>
                 <div class="space-y-5 overflow-y-auto px-1">
-                    
                     <div v-if="['dictate', 'memorize', 'read'].includes(reciteConfig.studyMode)" class="bg-slate-50 p-3 rounded-xl border border-slate-200 animate-fade-in space-y-3">
                         <div><label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">发音 Voice</label><select v-model="selectedVoiceURI" class="w-full text-xs p-1 rounded border border-slate-200 bg-white"><option v-for="v in voices" :value="v.voiceURI">{{ v.name }}</option></select></div>
                         <div><label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">语速 Speed ({{ ttsRate }}x)</label><input type="range" v-model.number="ttsRate" min="0.5" max="2" step="0.1" class="w-full accent-indigo-500 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"></div>
-                        
                         <div v-if="reciteConfig.studyMode === 'read'" class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">朗读次数 (次)</label>
-                                <input type="number" v-model.number="reciteConfig.readRepeat" min="1" max="10" class="w-full px-2 py-1.5 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500 bg-white">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">间隔时间 (秒)</label>
-                                <input type="number" v-model.number="reciteConfig.readInterval" min="0" max="10" step="0.5" class="w-full px-2 py-1.5 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500 bg-white">
+                            <div><label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">朗读次数 (次)</label><input type="number" v-model.number="reciteConfig.readRepeat" min="1" max="10" class="w-full px-2 py-1.5 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500 bg-white"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">间隔时间 (秒)</label><input type="number" v-model.number="reciteConfig.readInterval" min="0" max="10" step="0.5" class="w-full px-2 py-1.5 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500 bg-white"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">选择参与测试的单词本</label>
+                        <div class="max-h-32 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1 custom-scrollbar">
+                            <div v-for="b in filteredBooksList" :key="b.id" @click="toggleBookSelection(b.id)" class="flex items-center gap-3 p-2 rounded-lg cursor-pointer transition" :class="reciteConfig.selectedBookIds.includes(b.id) ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-slate-50'">
+                                <div class="w-5 h-5 rounded border flex items-center justify-center transition" :class="reciteConfig.selectedBookIds.includes(b.id) ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-white text-transparent'"><i class="fas fa-check text-xs"></i></div>
+                                <div class="flex-1"><span class="text-sm font-bold text-slate-700 block leading-none">{{ b.name }}</span><span class="text-[10px] text-slate-400">{{ b.grade }} · {{ b.term }}</span></div>
                             </div>
                         </div>
                     </div>
-
-                    <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">选择参与测试的单词本</label><div class="max-h-32 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1 custom-scrollbar"><div v-for="b in filteredBooksList" :key="b.id" @click="toggleBookSelection(b.id)" class="flex items-center gap-3 p-2 rounded-lg cursor-pointer transition" :class="reciteConfig.selectedBookIds.includes(b.id) ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-slate-50'"><div class="w-5 h-5 rounded border flex items-center justify-center transition" :class="reciteConfig.selectedBookIds.includes(b.id) ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-white text-transparent'"><i class="fas fa-check text-xs"></i></div><div class="flex-1"><span class="text-sm font-bold text-slate-700 block leading-none">{{ b.name }}</span><span class="text-[10px] text-slate-400">{{ b.grade }} · {{ b.term }}</span></div></div></div></div>
-                    <div v-if="reciteConfig.studyMode !== 'match'" class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">顺序</label><div class="flex bg-slate-100 p-1 rounded-xl"><button @click="reciteConfig.order='random'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.order==='random'?'bg-white shadow text-indigo-600':'text-slate-500'">🎲 乱序</button><button @click="reciteConfig.order='sequential'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.order==='sequential'?'bg-white shadow text-indigo-600':'text-slate-500'">📝 顺序</button></div></div><div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">模式</label><div class="flex bg-slate-100 p-1 rounded-xl relative"><button @click="reciteConfig.mode='unlimited'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.mode==='unlimited'?'bg-white shadow text-emerald-600':'text-slate-500'">♾️</button><button @click="reciteConfig.mode='timed'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.mode==='timed'?'bg-white shadow text-orange-600':'text-slate-500'">⏳</button><input v-if="reciteConfig.mode==='timed'" v-model.number="reciteConfig.duration" type="number" class="absolute -top-8 right-0 w-12 text-center text-xs border rounded shadow px-1 py-0.5" placeholder="min"></div></div></div>
+                    <div v-if="reciteConfig.studyMode !== 'match'" class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">顺序</label>
+                            <div class="flex bg-slate-100 p-1 rounded-xl">
+                                <button @click="reciteConfig.order='random'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.order==='random'?'bg-white shadow text-indigo-600':'text-slate-500'">🎲 乱序</button>
+                                <button @click="reciteConfig.order='sequential'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.order==='sequential'?'bg-white shadow text-indigo-600':'text-slate-500'">📝 顺序</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">模式</label>
+                            <div class="flex bg-slate-100 p-1 rounded-xl relative">
+                                <button @click="reciteConfig.mode='unlimited'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.mode==='unlimited'?'bg-white shadow text-emerald-600':'text-slate-500'">♾️</button>
+                                <button @click="reciteConfig.mode='timed'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.mode==='timed'?'bg-white shadow text-orange-600':'text-slate-500'">⏳</button>
+                                <input v-if="reciteConfig.mode==='timed'" v-model.number="reciteConfig.duration" type="number" class="absolute -top-8 right-0 w-12 text-center text-xs border rounded shadow px-1 py-0.5" placeholder="min">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex gap-3 mt-6"><button @click="showReciteSetup=false" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">取消</button><button @click="handleStartRecitation" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition transform active:scale-95">开始</button></div>
+                <div class="flex gap-3 mt-6">
+                    <button @click="showReciteSetup=false" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">取消</button>
+                    <button @click="handleStartRecitation" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition transform active:scale-95">开始</button>
+                </div>
             </div>
         </div>
 
-        <div v-if="isReciting" class="fixed inset-0 bg-white z-[100] flex flex-col animate-fade-in" @click="focusInput"><div class="h-2 bg-slate-100 w-full"><div class="h-full transition-all duration-300 ease-out" :class="{'bg-indigo-500':reciteConfig.studyMode==='recite', 'bg-purple-500':reciteConfig.studyMode==='dictate', 'bg-pink-500':reciteConfig.studyMode==='memorize', 'bg-blue-500':reciteConfig.studyMode==='read'}" :style="{ width: reciteProgress + '%' }"></div></div><div class="p-6 flex justify-between items-center"><div class="text-slate-400 font-bold text-sm"><span :class="{'text-indigo-600':reciteConfig.studyMode==='recite', 'text-purple-600':reciteConfig.studyMode==='dictate', 'text-pink-600':reciteConfig.studyMode==='memorize', 'text-blue-600':reciteConfig.studyMode==='read'}">{{ reciteIndex + 1 }}</span> / {{ reciteQueue.length }}</div><button @click="exitRecitation" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition"><i class="fas fa-times"></i></button></div><div class="flex-1 flex flex-col items-center justify-center p-8 max-w-5xl mx-auto w-full text-center">
-            
-            <div v-if="reciteConfig.studyMode === 'read'" class="absolute inset-0 z-50 flex items-center justify-center bg-white flex-col">
-                <div class="flex flex-col items-center animate-fade-in mb-12">
-                    <div class="text-6xl md:text-8xl font-black text-blue-600 mb-4">{{ currentReciteWord?.word }}</div>
-                    <div class="text-2xl md:text-3xl text-slate-400 font-mono mb-6 font-medium">/ {{ currentReciteWord?.phonetic || '...' }} /</div>
-                    <div class="text-3xl md:text-4xl text-slate-800 font-bold">{{ currentReciteWord?.meaning }}</div>
+        <div v-if="decoderState.show" class="fixed inset-0 bg-slate-900/95 z-[200] flex flex-col items-center animate-fade-in backdrop-blur-sm overflow-hidden">
+            <div class="w-full p-6 flex justify-between items-center shrink-0">
+                <div class="text-white flex items-center gap-3">
+                    <span class="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-1.5 rounded-xl text-sm font-bold shadow-lg shadow-amber-500/20 flex items-center gap-2">
+                        <i class="fas fa-magic"></i> 魔法记忆解码
+                    </span>
                 </div>
-                <div class="text-blue-400 font-bold text-xl flex flex-col items-center gap-6">
-                    <div class="flex items-center gap-2 animate-pulse">
-                        <i class="fas fa-volume-up"></i> Auto Reading...
-                    </div>
-                    <button @click="exitRecitation" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-sm font-bold transition flex items-center gap-2 shadow-sm border border-slate-200 active:scale-95">
-                        <i class="fas fa-sign-out-alt"></i> 退出朗读
-                    </button>
-                </div>
+                <button @click="decoderState.show = false" class="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full text-white flex items-center justify-center transition active:scale-95">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
             </div>
 
-            <div v-if="reciteConfig.studyMode === 'memorize' && memorizeStage === 0" class="absolute inset-0 z-50 flex items-center justify-center bg-white flex-col"><div :key="flashCount" class="flex flex-col items-center animate-ping-once mb-12"><div class="text-6xl md:text-8xl font-black text-pink-600 mb-4">{{ currentReciteWord?.word }}</div><div class="text-2xl md:text-3xl text-slate-400 font-mono mb-6 font-medium">/ {{ currentReciteWord?.phonetic || '...' }} /</div><div class="text-3xl md:text-4xl text-slate-800 font-bold">{{ currentReciteWord?.meaning }}</div></div><div class="text-pink-400 font-bold text-xl animate-pulse flex items-center gap-2"><i class="fas fa-volume-up"></i> Follow Reading {{ flashCount }}/5</div></div><div v-if="reciteConfig.studyMode === 'dictate'" class="mb-10 scale-up"><div class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-500 rounded-full text-sm font-bold"><i class="fas fa-headphones"></i> Listen & Type (听发音拼写)</div></div><div v-if="reciteConfig.studyMode === 'memorize' && memorizeStage > 0" class="mb-6 scale-up"><div class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors" :class="{'bg-blue-50 text-blue-500': memorizeStage===1, 'bg-purple-50 text-purple-500': memorizeStage===2, 'bg-orange-50 text-orange-500': memorizeStage===3}"><span v-if="memorizeStage===1">Stage 1: 临摹 (Copy)</span><span v-else-if="memorizeStage===2">Stage 2: 听拼 (Spell)</span><span v-else-if="memorizeStage===3">Stage 3: 默写 (Recall)</span></div></div><div class="mb-12 scale-up min-h-[100px] flex flex-col justify-center"><div v-if="showHintMeaning"><div class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">DEFINITION</div><h2 class="text-4xl md:text-5xl font-black text-slate-800 leading-tight mb-4 transition-all">{{ currentReciteWord?.meaning }}</h2></div><div v-if="showHintWord && reciteConfig.studyMode === 'memorize' && memorizeStage === 1" class="text-3xl font-bold text-pink-300 select-none tracking-widest animate-pulse">{{ currentReciteWord?.word }}</div></div><div class="relative w-full flex justify-center mb-8"><input ref="inputRef" v-model="reciteInput" @input="handleReciteInput" @keyup.enter="checkReciteAnswer" type="text" autocomplete="off" spellcheck="false" :maxlength="currentReciteWord?.word.length" class="absolute inset-0 opacity-0 cursor-default caret-transparent z-0"><div class="flex flex-wrap justify-center gap-3 z-10 pointer-events-none"><div v-for="(slot, index) in wordSlots" :key="index" class="flex items-end justify-center transition-all duration-200" :class="[slot.isSpace ? 'w-6 border-b-0' : 'w-10 md:w-14 border-b-4 h-16 md:h-20', slot.isSpace ? '' : (reciteStatus === 'wrong' ? 'border-red-400 text-red-500' : (reciteStatus === 'correct' ? 'border-emerald-400 text-emerald-500' : (slot.isActive ? (reciteConfig.studyMode==='memorize' ? (memorizeStage===1?'border-blue-500':(memorizeStage===2?'border-purple-500':'border-orange-500')) : (reciteConfig.studyMode==='dictate'?'border-purple-500':'border-indigo-500')) : 'border-slate-200 text-slate-800')))]"><span class="text-4xl md:text-5xl font-bold font-mono pb-2" :class="{'animate-bounce-slow': slot.isActive && reciteStatus === 'neutral'}">{{ slot.val }}</span></div></div></div><div class="h-10 flex justify-center items-center gap-4 text-sm font-bold"><span v-if="reciteStatus === 'wrong'" class="text-red-500 animate-bounce-slow flex items-center gap-2"><i class="fas fa-times-circle"></i> Try Again!</span><span v-else-if="reciteStatus === 'correct'" class="text-emerald-500 flex items-center gap-2"><i class="fas fa-check-circle"></i> Correct!</span><div v-else class="text-slate-300 flex gap-4 text-xs font-normal"><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">←</kbd> Prev</span><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">Enter</kbd> Check</span><span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">→</kbd> Next</span></div></div><div v-if="showAnswer" class="mt-8 p-6 rounded-xl animate-fade-in w-full max-w-md mx-auto border" :class="{'bg-indigo-50 border-indigo-100':reciteConfig.studyMode==='recite', 'bg-purple-50 border-purple-100':reciteConfig.studyMode==='dictate', 'bg-pink-50 border-pink-100':reciteConfig.studyMode==='memorize'}"><p class="text-xs font-bold uppercase mb-1" :class="{'text-indigo-400':reciteConfig.studyMode==='recite', 'text-purple-400':reciteConfig.studyMode==='dictate', 'text-pink-400':reciteConfig.studyMode==='memorize'}">Answer</p><p class="text-3xl font-black tracking-wide select-all" :class="{'text-indigo-600':reciteConfig.studyMode==='recite', 'text-purple-600':reciteConfig.studyMode==='dictate', 'text-pink-600':reciteConfig.studyMode==='memorize'}">{{ currentReciteWord?.word }}</p><p class="text-xs mt-2" :class="{'text-indigo-400':reciteConfig.studyMode==='recite', 'text-purple-400':reciteConfig.studyMode==='dictate', 'text-pink-400':reciteConfig.studyMode==='memorize'}">Type it correctly to continue</p></div></div><button @click.stop="prevWord" class="fixed left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition" :class="{'opacity-50 cursor-not-allowed': reciteIndex === 0}"><i class="fas fa-chevron-left"></i></button><button @click.stop="nextWord" class="fixed right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-chevron-right"></i></button></div>
+            <div class="flex-1 w-full max-w-7xl flex flex-col items-center relative px-6 md:px-12 pb-12 overflow-y-auto custom-scrollbar">
+                
+                <div class="text-center mt-4 mb-10 shrink-0">
+                    <span class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-amber-300 via-orange-400 to-pink-500 select-all tracking-wider drop-shadow-2xl">
+                        {{ decoderState.word }}
+                    </span>
+                </div>
 
-        <div v-if="isMatchingGame" class="fixed inset-0 bg-white z-[100] flex flex-col animate-fade-in"><template v-if="matchGameMode === 'playing'"><div class="p-6 flex justify-between items-center bg-slate-50 border-b border-slate-100"><div class="text-slate-500 font-bold flex gap-4 items-center"><span class="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg text-sm border border-emerald-100 shadow-sm"><i class="fas fa-layer-group mr-2"></i>本轮进度: {{ Math.min((matchCurrentRound + 1) * 20, matchTotalQueue.length) }} / {{ matchTotalQueue.length }}</span></div><button @click="submitMatchRound" class="px-6 py-2 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200">{{ (matchCurrentRound + 1) * 20 >= matchTotalQueue.length ? '完成测试' : '下一组' }} <i class="fas fa-arrow-right ml-1"></i></button></div><div class="flex-1 flex relative overflow-hidden bg-slate-50/30 p-6 items-center justify-center"><div class="grid grid-cols-4 gap-6 w-full max-w-6xl" :class="matchCol3.length === 0 ? 'max-w-2xl !grid-cols-2' : ''"><div class="flex flex-col gap-3"><div v-for="item in matchCol1" :key="'c1-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center text-sm font-medium select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-600 hover:border-emerald-100 hover:shadow-md')]">{{ item.meaning }}<div v-if="getPairOrder(item)" class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div></div></div><div class="flex flex-col gap-3"><div v-for="item in matchCol2" :key="'c2-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center font-bold text-lg select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-700 hover:border-emerald-100 hover:shadow-md')]">{{ item.word }}<div v-if="getPairOrder(item)" class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div></div></div><div v-if="matchCol3.length > 0" class="flex flex-col gap-3 pl-4 border-l border-slate-200/50"><div v-for="item in matchCol3" :key="'c3-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center font-bold text-lg select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-700 hover:border-emerald-100 hover:shadow-md')]">{{ item.word }}<div v-if="getPairOrder(item)" class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div></div></div><div v-if="matchCol4.length > 0" class="flex flex-col gap-3"><div v-for="item in matchCol4" :key="'c4-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center text-sm font-medium select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-600 hover:border-emerald-100 hover:shadow-md')]">{{ item.meaning }}<div v-if="getPairOrder(item)" class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div></div></div></div></div></template><else><div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center"><h3 class="text-xl font-bold text-slate-800">测试结果汇总</h3><div class="flex gap-4 text-sm font-bold"><span class="text-emerald-500">正确: {{ matchCorrectList.length }}</span><span class="text-red-500">错误: {{ matchWrongList.length }}</span></div><button @click="exitMatchGame" class="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700 transition">结束测试</button></div><div class="flex-1 flex overflow-hidden"><div class="flex-1 border-r border-slate-100 bg-emerald-50/10 p-6 overflow-y-auto"><h4 class="text-sm font-bold text-emerald-600 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-check-circle"></i> Correct Matches</h4><div class="space-y-2"><div v-for="res in matchCorrectList" :key="res.word" class="flex justify-between items-center p-3 bg-white border border-emerald-100 rounded-lg shadow-sm"><span class="font-bold text-slate-700">{{ res.word }}</span><span class="text-sm text-slate-500">{{ res.correctMeaning }}</span></div><div v-if="matchCorrectList.length === 0" class="text-center text-slate-400 py-10 italic">没有正确配对... 加油！</div></div></div><div class="flex-1 bg-red-50/10 p-6 overflow-y-auto"><h4 class="text-sm font-bold text-red-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-times-circle"></i> Incorrect Matches</h4><div class="space-y-2"><div v-for="res in matchWrongList" :key="res.word" class="p-3 bg-white border border-red-100 rounded-lg shadow-sm"><div class="flex justify-between items-center mb-1"><span class="font-bold text-red-600 line-through">{{ res.word }}</span><span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Correct: {{ res.correctMeaning }}</span></div><div class="text-xs text-slate-400">你选择了: {{ res.userMeaning }}</div></div><div v-if="matchWrongList.length === 0" class="text-center text-emerald-400 py-10 font-bold text-xl">全对！太棒了！🎉</div></div></div></div></template></div>
+                <div v-if="decoderState.isLoading" class="py-20 flex flex-col items-center justify-center text-amber-400 space-y-6 w-full">
+                    <div class="relative">
+                        <i class="fas fa-hat-wizard text-7xl animate-bounce relative z-10"></i>
+                        <div class="absolute inset-0 bg-amber-400 blur-2xl opacity-40 animate-pulse"></div>
+                    </div>
+                    <p class="font-bold text-2xl animate-pulse tracking-widest text-amber-200/80">魔法老师正在翻阅古老的魔法书...</p>
+                </div>
+
+                <div v-else-if="decoderState.isParsed" class="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div v-for="(part, index) in decoderState.parsedContent" :key="index" 
+                         class="rounded-3xl p-6 md:p-8 backdrop-blur-md border shadow-2xl flex flex-col h-full transition-transform hover:-translate-y-1"
+                         :class="[part.bg, part.border]">
+                        <div class="flex items-center gap-3 mb-6 pb-4 border-b border-white/10 shrink-0">
+                            <div class="text-4xl drop-shadow-lg">{{ part.icon }}</div>
+                            <h4 class="text-xl font-bold tracking-widest" :class="part.color">{{ part.title }}</h4>
+                        </div>
+                        <div class="text-slate-200 leading-relaxed text-base md:text-lg [&_p]:mb-4 [&_strong]:text-white [&_strong]:font-bold [&_strong]:px-1 [&_b]:text-white [&_b]:font-bold [&_b]:px-1" v-html="part.content"></div>
+                    </div>
+                </div>
+
+                <div v-else class="w-full bg-slate-800/80 border border-slate-700/50 shadow-2xl shadow-black/50 rounded-3xl p-8 md:p-12 backdrop-blur-md">
+                    <div class="text-slate-200 text-lg md:text-xl leading-relaxed space-y-6 break-words [&_p]:mb-4 [&_strong]:text-amber-400 [&_b]:text-amber-400" v-html="decoderState.content"></div>
+                </div>
+            </div>
+            
+            <div class="shrink-0 p-4 w-full text-center text-slate-500 text-xs font-bold bg-black/20 border-t border-white/5">
+                <i class="fas fa-robot mr-1"></i> 魔法解析由 AI 生成，请用想象力来感受单词的魅力！
+            </div>
+        </div>
+        
+        <div v-if="isReciting" class="fixed inset-0 bg-white z-[100] flex flex-col animate-fade-in" @click="focusInput">
+            <div class="h-2 bg-slate-100 w-full">
+                <div class="h-full transition-all duration-300 ease-out" :class="{'bg-indigo-500':reciteConfig.studyMode==='recite', 'bg-purple-500':reciteConfig.studyMode==='dictate', 'bg-pink-500':reciteConfig.studyMode==='memorize', 'bg-blue-500':reciteConfig.studyMode==='read'}" :style="{ width: reciteProgress + '%' }"></div>
+            </div>
+            <div class="p-6 flex justify-between items-center">
+                <div class="text-slate-400 font-bold text-sm">
+                    <span :class="{'text-indigo-600':reciteConfig.studyMode==='recite', 'text-purple-600':reciteConfig.studyMode==='dictate', 'text-pink-600':reciteConfig.studyMode==='memorize', 'text-blue-600':reciteConfig.studyMode==='read'}">{{ reciteIndex + 1 }}</span> / {{ reciteQueue.length }}
+                </div>
+                <button @click="exitRecitation" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center p-8 max-w-5xl mx-auto w-full text-center">
+                
+                <div v-if="reciteConfig.studyMode === 'read'" class="absolute inset-0 z-50 flex items-center justify-center bg-white flex-col">
+                    <div class="flex flex-col items-center animate-fade-in mb-12">
+                        <div class="text-6xl md:text-8xl font-black text-blue-600 mb-4">{{ currentReciteWord?.word }}</div>
+                        <div class="text-2xl md:text-3xl text-slate-400 font-mono mb-6 font-medium">/ {{ currentReciteWord?.phonetic || '...' }} /</div>
+                        <div class="text-3xl md:text-4xl text-slate-800 font-bold">{{ currentReciteWord?.meaning }}</div>
+                    </div>
+                    <div class="text-blue-400 font-bold text-xl flex flex-col items-center gap-6">
+                        <div class="flex items-center gap-2 animate-pulse">
+                            <i class="fas fa-volume-up"></i> Auto Reading...
+                        </div>
+                        <button @click="exitRecitation" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-sm font-bold transition flex items-center gap-2 shadow-sm border border-slate-200 active:scale-95">
+                            <i class="fas fa-sign-out-alt"></i> 退出朗读
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="reciteConfig.studyMode === 'memorize' && memorizeStage === 0" class="absolute inset-0 z-50 flex items-center justify-center bg-white flex-col">
+                    <div :key="flashCount" class="flex flex-col items-center animate-ping-once mb-12">
+                        <div class="text-6xl md:text-8xl font-black text-pink-600 mb-4">{{ currentReciteWord?.word }}</div>
+                        <div class="text-2xl md:text-3xl text-slate-400 font-mono mb-6 font-medium">/ {{ currentReciteWord?.phonetic || '...' }} /</div>
+                        <div class="text-3xl md:text-4xl text-slate-800 font-bold">{{ currentReciteWord?.meaning }}</div>
+                    </div>
+                    <div class="text-pink-400 font-bold text-xl animate-pulse flex items-center gap-2"><i class="fas fa-volume-up"></i> Follow Reading {{ flashCount }}/5</div>
+                </div>
+                
+                <div v-if="reciteConfig.studyMode === 'dictate'" class="mb-10 scale-up">
+                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-500 rounded-full text-sm font-bold"><i class="fas fa-headphones"></i> Listen & Type (听发音拼写)</div>
+                </div>
+                
+                <div v-if="reciteConfig.studyMode === 'memorize' && memorizeStage > 0" class="mb-6 scale-up">
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-colors" :class="{'bg-blue-50 text-blue-500': memorizeStage===1, 'bg-purple-50 text-purple-500': memorizeStage===2, 'bg-orange-50 text-orange-500': memorizeStage===3}">
+                        <span v-if="memorizeStage===1">Stage 1: 临摹 (Copy)</span>
+                        <span v-else-if="memorizeStage===2">Stage 2: 听拼 (Spell)</span>
+                        <span v-else-if="memorizeStage===3">Stage 3: 默写 (Recall)</span>
+                    </div>
+                </div>
+                
+                <div class="mb-12 scale-up min-h-[100px] flex flex-col justify-center">
+                    <div v-if="showHintMeaning">
+                        <div class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">DEFINITION</div>
+                        <h2 class="text-4xl md:text-5xl font-black text-slate-800 leading-tight mb-4 transition-all">{{ currentReciteWord?.meaning }}</h2>
+                    </div>
+                    <div v-if="showHintWord && reciteConfig.studyMode === 'memorize' && memorizeStage === 1" class="text-3xl font-bold text-pink-300 select-none tracking-widest animate-pulse">{{ currentReciteWord?.word }}</div>
+                </div>
+                
+                <div class="relative w-full flex justify-center mb-8">
+                    <input ref="inputRef" v-model="reciteInput" @input="handleReciteInput" @keyup.enter="checkReciteAnswer" type="text" autocomplete="off" spellcheck="false" :maxlength="currentReciteWord?.word.length" class="absolute inset-0 opacity-0 cursor-default caret-transparent z-0">
+                    <div class="flex flex-wrap justify-center gap-3 z-10 pointer-events-none">
+                        <div v-for="(slot, index) in wordSlots" :key="index" class="flex items-end justify-center transition-all duration-200" :class="[slot.isSpace ? 'w-6 border-b-0' : 'w-10 md:w-14 border-b-4 h-16 md:h-20', slot.isSpace ? '' : (reciteStatus === 'wrong' ? 'border-red-400 text-red-500' : (reciteStatus === 'correct' ? 'border-emerald-400 text-emerald-500' : (slot.isActive ? (reciteConfig.studyMode==='memorize' ? (memorizeStage===1?'border-blue-500':(memorizeStage===2?'border-purple-500':'border-orange-500')) : (reciteConfig.studyMode==='dictate'?'border-purple-500':'border-indigo-500')) : 'border-slate-200 text-slate-800')))]">
+                            <span class="text-4xl md:text-5xl font-bold font-mono pb-2" :class="{'animate-bounce-slow': slot.isActive && reciteStatus === 'neutral'}">{{ slot.val }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="h-10 flex justify-center items-center gap-4 text-sm font-bold">
+                    <span v-if="reciteStatus === 'wrong'" class="text-red-500 animate-bounce-slow flex items-center gap-2"><i class="fas fa-times-circle"></i> Try Again!</span>
+                    <span v-else-if="reciteStatus === 'correct'" class="text-emerald-500 flex items-center gap-2"><i class="fas fa-check-circle"></i> Correct!</span>
+                    <div v-else class="text-slate-300 flex gap-4 text-xs font-normal">
+                        <span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">←</kbd> Prev</span>
+                        <span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">Enter</kbd> Check</span>
+                        <span class="flex items-center gap-1"><kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-mono">→</kbd> Next</span>
+                    </div>
+                </div>
+                
+                <div v-if="showAnswer" class="mt-8 p-6 rounded-xl animate-fade-in w-full max-w-md mx-auto border" :class="{'bg-indigo-50 border-indigo-100':reciteConfig.studyMode==='recite', 'bg-purple-50 border-purple-100':reciteConfig.studyMode==='dictate', 'bg-pink-50 border-pink-100':reciteConfig.studyMode==='memorize'}">
+                    <p class="text-xs font-bold uppercase mb-1" :class="{'text-indigo-400':reciteConfig.studyMode==='recite', 'text-purple-400':reciteConfig.studyMode==='dictate', 'text-pink-400':reciteConfig.studyMode==='memorize'}">Answer</p>
+                    <p class="text-3xl font-black tracking-wide select-all" :class="{'text-indigo-600':reciteConfig.studyMode==='recite', 'text-purple-600':reciteConfig.studyMode==='dictate', 'text-pink-600':reciteConfig.studyMode==='memorize'}">{{ currentReciteWord?.word }}</p>
+                    <p class="text-xs mt-2" :class="{'text-indigo-400':reciteConfig.studyMode==='recite', 'text-purple-400':reciteConfig.studyMode==='dictate', 'text-pink-400':reciteConfig.studyMode==='memorize'}">Type it correctly to continue</p>
+                </div>
+            </div>
+            <button @click.stop="prevWord" class="fixed left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition" :class="{'opacity-50 cursor-not-allowed': reciteIndex === 0}"><i class="fas fa-chevron-left"></i></button>
+            <button @click.stop="nextWord" class="fixed right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <div v-if="isMatchingGame" class="fixed inset-0 bg-white z-[100] flex flex-col animate-fade-in">
+            <template v-if="matchGameMode === 'playing'">
+                <div class="p-6 flex justify-between items-center bg-slate-50 border-b border-slate-100">
+                    <div class="text-slate-500 font-bold flex gap-4 items-center">
+                        <span class="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg text-sm border border-emerald-100 shadow-sm">
+                            <i class="fas fa-layer-group mr-2"></i>本轮进度: {{ Math.min((matchCurrentRound + 1) * 20, matchTotalQueue.length) }} / {{ matchTotalQueue.length }}
+                        </span>
+                    </div>
+                    <button @click="submitMatchRound" class="px-6 py-2 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200">
+                        {{ (matchCurrentRound + 1) * 20 >= matchTotalQueue.length ? '完成测试' : '下一组' }} <i class="fas fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+                <div class="flex-1 flex relative overflow-hidden bg-slate-50/30 p-6 items-center justify-center">
+                    <div class="grid grid-cols-4 gap-6 w-full max-w-6xl" :class="matchCol3.length === 0 ? 'max-w-2xl !grid-cols-2' : ''">
+                        <div class="flex flex-col gap-3">
+                            <div v-for="item in matchCol1" :key="'c1-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center text-sm font-medium select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-600 hover:border-emerald-100 hover:shadow-md')]">
+                                {{ item.meaning }}
+                                <div v-if="getPairOrder(item)" class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <div v-for="item in matchCol2" :key="'c2-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center font-bold text-lg select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-700 hover:border-emerald-100 hover:shadow-md')]">
+                                {{ item.word }}
+                                <div v-if="getPairOrder(item)" class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div>
+                            </div>
+                        </div>
+                        <div v-if="matchCol3.length > 0" class="flex flex-col gap-3 pl-4 border-l border-slate-200/50">
+                            <div v-for="item in matchCol3" :key="'c3-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center font-bold text-lg select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-700 hover:border-emerald-100 hover:shadow-md')]">
+                                {{ item.word }}
+                                <div v-if="getPairOrder(item)" class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div>
+                            </div>
+                        </div>
+                        <div v-if="matchCol4.length > 0" class="flex flex-col gap-3">
+                            <div v-for="item in matchCol4" :key="'c4-'+item.id" @click="handleMatchClick(item)" class="h-16 px-4 rounded-xl shadow-sm border-2 cursor-pointer transition-all flex items-center justify-center text-center text-sm font-medium select-none relative group" :class="[isSelected(item) ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 z-10' : (isPaired(item) ? 'bg-slate-100 border-slate-200 text-slate-400 shadow-none' : 'bg-white border-white text-slate-600 hover:border-emerald-100 hover:shadow-md')]">
+                                {{ item.meaning }}
+                                <div v-if="getPairOrder(item)" class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold shadow-md border-2 border-white">{{ getPairOrder(item) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <template v-else>
+                <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-slate-800">测试结果汇总</h3>
+                    <div class="flex gap-4 text-sm font-bold">
+                        <span class="text-emerald-500">正确: {{ matchCorrectList.length }}</span>
+                        <span class="text-red-500">错误: {{ matchWrongList.length }}</span>
+                    </div>
+                    <button @click="exitMatchGame" class="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700 transition">结束测试</button>
+                </div>
+                <div class="flex-1 flex overflow-hidden">
+                    <div class="flex-1 border-r border-slate-100 bg-emerald-50/10 p-6 overflow-y-auto">
+                        <h4 class="text-sm font-bold text-emerald-600 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-check-circle"></i> Correct Matches</h4>
+                        <div class="space-y-2">
+                            <div v-for="res in matchCorrectList" :key="res.word" class="flex justify-between items-center p-3 bg-white border border-emerald-100 rounded-lg shadow-sm">
+                                <span class="font-bold text-slate-700">{{ res.word }}</span>
+                                <span class="text-sm text-slate-500">{{ res.correctMeaning }}</span>
+                            </div>
+                            <div v-if="matchCorrectList.length === 0" class="text-center text-slate-400 py-10 italic">没有正确配对... 加油！</div>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-red-50/10 p-6 overflow-y-auto">
+                        <h4 class="text-sm font-bold text-red-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-times-circle"></i> Incorrect Matches</h4>
+                        <div class="space-y-2">
+                            <div v-for="res in matchWrongList" :key="res.word" class="p-3 bg-white border border-red-100 rounded-lg shadow-sm">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-bold text-red-600 line-through">{{ res.word }}</span>
+                                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Correct: {{ res.correctMeaning }}</span>
+                                </div>
+                                <div class="text-xs text-slate-400">你选择了: {{ res.userMeaning }}</div>
+                            </div>
+                            <div v-if="matchWrongList.length === 0" class="text-center text-emerald-400 py-10 font-bold text-xl">全对！太棒了！🎉</div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
     </div>
     `
 }
