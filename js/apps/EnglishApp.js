@@ -1,6 +1,6 @@
 /**
  * js/apps/EnglishApp.js
- * 英语工作室 (包含：UI布局简化重构、右侧工具箱瘦身与网格化、模糊搜索、朗读优化、AI沉浸式记忆解码)
+ * 英语工作室 (包含：全新顶部筛选栏+横向词库列表、左侧工具箱、主视图最大化、模糊搜索、AI沉浸式记忆解码)
  */
 import { ref, computed, watch, nextTick, onUnmounted, onMounted } from 'vue';
 import { useTTS } from '../composables/useTTS.js';
@@ -19,7 +19,7 @@ export default {
     setup(props, { emit }) {
         const { speak, speakQueue, stop: stopSpeaking, voices, selectedVoiceURI, rate: ttsRate, isSpeaking } = useTTS();
 
-        // --- 1. 侧边栏过滤与分类状态 ---
+        // --- 1. 顶部过滤与分类状态 ---
         const filterGrade = ref('');
         const filterTerm = ref('');
         const filterType = ref('');
@@ -460,301 +460,332 @@ export default {
         };
     },
     template: `
-    <div class="h-full flex gap-6">
+    <div class="h-full flex flex-col gap-4">
         
-        <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 flex overflow-hidden min-w-0">
-            <div class="w-56 bg-slate-50 border-r border-slate-100 flex flex-col py-4 gap-3 shrink-0 h-full">
-                <div class="px-3 flex flex-col gap-2">
-                    <select v-model="filterGrade" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white">
-                        <option value="">全部年级</option>
-                        <option v-for="g in gradeOptions" :value="g">{{g}}</option>
-                    </select>
-                    <select v-model="filterTerm" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white">
-                        <option value="">全部学期</option>
-                        <option v-for="t in termOptions" :value="t">{{t}}</option>
-                    </select>
-                    <select v-model="filterType" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white">
-                        <option value="">全部类型</option>
-                        <option value="word">单词本</option>
-                        <option value="phrase">短语本</option>
-                    </select>
-                </div>
+        <div class="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-center gap-4 shrink-0 overflow-hidden">
+            <div class="flex gap-2 shrink-0 border-r border-slate-100 pr-4">
+                <select v-model="filterGrade" class="text-xs px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-slate-50 text-slate-600 font-medium w-28 cursor-pointer transition">
+                    <option value="">全部年级</option>
+                    <option v-for="g in gradeOptions" :value="g">{{g}}</option>
+                </select>
+                <select v-model="filterTerm" class="text-xs px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-slate-50 text-slate-600 font-medium w-28 cursor-pointer transition">
+                    <option value="">全部学期</option>
+                    <option v-for="t in termOptions" :value="t">{{t}}</option>
+                </select>
+                <select v-model="filterType" class="text-xs px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-slate-50 text-slate-600 font-medium w-28 cursor-pointer transition">
+                    <option value="">全部类型</option>
+                    <option value="word">单词本</option>
+                    <option value="phrase">短语本</option>
+                </select>
+            </div>
 
-                <div class="flex-1 w-full overflow-y-auto custom-scrollbar flex flex-col gap-1 px-2">
-                    <div v-if="filteredBooksList.length === 0" class="text-center text-xs text-slate-400 py-4">无对应结果</div>
-                    <div v-for="book in filteredBooksList" :key="book.id" @click="$emit('selectBook', book)"
-                         class="w-full rounded-xl flex items-center gap-3 p-2 cursor-pointer transition-all border group relative"
-                         :class="currentBook && currentBook.id === book.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 border-indigo-600' : 'bg-white text-slate-600 hover:border-indigo-200 hover:shadow-sm border-slate-100'">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                             :class="currentBook && currentBook.id === book.id ? 'bg-white/20' : 'bg-slate-100 text-slate-400 group-hover:text-indigo-500'">
-                            <i :class="[book.icon, 'text-sm']"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="font-bold text-sm truncate">{{ book.name }}</div>
-                            <div class="text-[10px] truncate" :class="currentBook && currentBook.id === book.id ? 'text-indigo-200' : 'text-slate-400'">
-                                <span v-if="book.grade">{{ book.grade }}</span><span v-if="book.term"> - {{ book.term }}</span>
-                            </div>
-                        </div>
-                        <div class="absolute right-2 top-2 text-[10px] px-1 rounded-sm"
-                             :class="currentBook && currentBook.id === book.id ? 'bg-white/10' : 'bg-slate-50 text-slate-300'">
-                            #{{ book.sortOrder || 0 }}
-                        </div>
+            <div class="flex-1 flex items-center min-w-0 px-2">
+                <div class="relative w-full max-w-lg">
+                    <i class="fas fa-book-open absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none"></i>
+                    <select 
+                        :value="currentBook ? currentBook.id : ''"
+                        @change="(e) => {
+                            const selected = filteredBooksList.find(b => b.id === e.target.value);
+                            if (selected) $emit('selectBook', selected);
+                        }"
+                        class="w-full text-sm pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-slate-50 text-slate-700 font-bold cursor-pointer transition shadow-inner appearance-none"
+                        :disabled="filteredBooksList.length === 0"
+                    >
+                        <option value="" disabled>{{ filteredBooksList.length === 0 ? '无对应结果，请新建或调整筛选' : '📚 请选择要学习的词库...' }}</option>
+                        <option v-for="book in filteredBooksList" :key="book.id" :value="book.id">
+                            {{ book.name }} —— ({{ book.grade }} · {{ book.term }})
+                        </option>
+                    </select>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                        <i class="fas fa-chevron-down text-xs"></i>
                     </div>
-                </div>
-                
-                <div class="mt-2 pt-2 border-t border-slate-200 w-full flex justify-center shrink-0 px-3">
-                    <button @click="openCreateModal" class="w-full py-2 rounded-xl border border-dashed border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-500 flex items-center justify-center gap-2 transition font-bold text-sm bg-white">
-                        <i class="fas fa-plus"></i> 新建
-                    </button>
                 </div>
             </div>
 
-            <div class="flex-1 flex flex-col min-w-0" v-if="currentBook">
-                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
-                            <i :class="currentBook.icon"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-slate-800 leading-tight flex items-center gap-2">
-                                {{ currentBook.name }}
-                                <button @click="openEditBookModal" class="text-slate-300 hover:text-indigo-500 text-xs transition"><i class="fas fa-pen"></i></button>
-                            </h3>
-                            <p class="text-xs text-slate-400">{{ vocabulary.length }} 条 · {{ currentBook.grade || '未分级' }} · {{ currentBook.term || '全学年' }}</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        <div class="relative mr-2 group">
-                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs group-focus-within:text-indigo-500 transition-colors"></i>
-                            <input v-model="searchQuery" placeholder="搜索单词或释义..." class="pl-8 pr-8 py-1.5 w-48 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none transition bg-slate-50 focus:bg-white text-slate-600">
-                            <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><i class="fas fa-times-circle"></i></button>
-                        </div>
-
-                        <button v-if="currentBook.type === 'word'" @click="handleUpdateAllPhonetics" :disabled="isUpdatingPhonetics" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 hover:bg-amber-100 flex items-center justify-center transition border border-amber-100 relative overflow-hidden" title="一键更新所有单词音标">
-                            <i class="fas" :class="isUpdatingPhonetics ? 'fa-circle-notch fa-spin' : 'fa-magic'"></i>
-                        </button>
-                        <div class="w-px h-6 bg-slate-100 mx-1"></div>
-                        <button @click="handleDownload" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition border border-slate-200" title="模板"><i class="fas fa-download text-xs"></i></button>
-                        <label class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 flex items-center justify-center transition cursor-pointer border border-indigo-100" title="导入">
-                            <i class="fas fa-file-import text-xs"></i>
-                            <input type="file" class="hidden" accept=".xlsx" @change="(e) => $emit('upload', e)">
-                        </label>
-                        <button @click="handleExport" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition border border-emerald-100" title="导出"><i class="fas fa-file-export text-xs"></i></button>
-                        <button @click="$emit('deleteBook', currentBook.id)" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition border border-red-100" title="删除"><i class="fas fa-trash-alt text-xs"></i></button>
-                    </div>
-                </div>
-                <div class="p-3 bg-slate-50/50 border-b border-slate-100 flex gap-2 items-center">
-                    <input v-model="localNewWord.word" :placeholder="currentBook.type === 'word' ? 'New Word' : 'New Phrase'" class="w-1/3 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 focus:outline-none bg-white font-bold" @keyup.enter="handleAddWord">
-                    <div v-if="isFetching" class="flex items-center gap-1 text-xs text-indigo-400 font-bold px-2"><i class="fas fa-circle-notch fa-spin"></i></div>
-                    <select v-if="currentBook.type === 'word'" v-model="localNewWord.pos" class="w-20 px-1 py-2 rounded-lg border border-slate-200 text-xs bg-white cursor-pointer"><option v-for="opt in posOptions" :value="opt.value">{{ opt.label }}</option></select>
-                    <input v-model="localNewWord.meaning" placeholder="释义" class="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 focus:outline-none bg-white" @keyup.enter="handleAddWord">
-                    <button @click="handleAddWord" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-700 transition active:scale-95">添加</button>
-                </div>
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-0">
-                    <table class="w-full text-sm text-left border-collapse">
-                        <thead class="text-slate-400 bg-white sticky top-0 z-10 text-xs uppercase font-bold">
-                            <tr>
-                                <th class="p-3 pl-5">内容</th>
-                                <th v-if="currentBook.type === 'word'" class="p-3">音标</th>
-                                <th v-if="currentBook.type === 'word'" class="p-3">词性</th>
-                                <th class="p-3">释义</th>
-                                <th class="p-3 text-center w-40">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-50">
-                            <tr v-for="v in filteredVocab" :key="v.id" class="group hover:bg-indigo-50/20 transition-colors">
-                                <template v-if="editingId !== v.id">
-                                    <td class="p-3 pl-5 font-bold text-slate-700 select-all">{{ v.word }}</td>
-                                    <td v-if="currentBook.type === 'word'" class="p-3 font-mono text-slate-400 text-xs">{{ v.phonetic }}</td>
-                                    <td v-if="currentBook.type === 'word'" class="p-3">
-                                        <span class="text-[10px] px-1.5 py-0.5 rounded border font-bold whitespace-nowrap" :class="getPosColor(v.pos)">{{ v.pos }}</span>
-                                    </td>
-                                    <td class="p-3 text-slate-600">{{ v.meaning }}</td>
-                                    <td class="p-3 text-center flex justify-center gap-2">
-                                        <button @click="openMemoryDecoder(v.word)" class="text-amber-500 bg-amber-50 p-1.5 rounded hover:bg-amber-100 transition shadow-sm border border-amber-100" title="AI 记忆解码">
-                                            <i class="fas fa-lightbulb"></i>
-                                        </button>
-                                        <button @click="speakWord(v.word)" class="text-blue-500 bg-blue-50 p-1.5 rounded hover:bg-blue-100 transition" title="朗读此词"><i class="fas fa-volume-up"></i></button>
-                                        <button @click="startEdit(v)" class="text-indigo-500 bg-indigo-50 p-1.5 rounded hover:bg-indigo-100 transition" title="编辑"><i class="fas fa-pen"></i></button>
-                                        <button @click="$emit('deleteWord', v.id)" class="text-red-400 bg-red-50 p-1.5 rounded hover:bg-red-100 transition" title="删除"><i class="fas fa-times"></i></button>
-                                    </td>
-                                </template>
-                                <template v-else>
-                                    <td class="p-3 pl-5"><input v-model="editForm.word" class="w-full px-2 py-1 border border-indigo-300 rounded text-slate-700 font-bold outline-none ring-2 ring-indigo-100"></td>
-                                    <td v-if="currentBook.type === 'word'" class="p-3"><input v-model="editForm.phonetic" class="w-full px-2 py-1 border border-indigo-300 rounded font-mono text-xs outline-none ring-2 ring-indigo-100"></td>
-                                    <td v-if="currentBook.type === 'word'" class="p-3">
-                                        <select v-model="editForm.pos" class="w-full text-xs px-1 py-1 border border-indigo-300 rounded bg-white">
-                                            <option v-for="o in posOptions" :value="o.value">{{ o.value }}</option>
-                                        </select>
-                                    </td>
-                                    <td class="p-3"><input v-model="editForm.meaning" class="w-full px-2 py-1 border border-indigo-300 rounded outline-none ring-2 ring-indigo-100" @keyup.enter="saveEdit"></td>
-                                    <td class="p-3 text-center flex justify-center gap-2">
-                                        <button @click="saveEdit" class="text-emerald-500 bg-emerald-50 p-1.5 rounded hover:bg-emerald-100"><i class="fas fa-check"></i></button>
-                                        <button @click="cancelEdit" class="text-slate-400 bg-slate-50 p-1.5 rounded hover:bg-slate-100"><i class="fas fa-times"></i></button>
-                                    </td>
-                                </template>
-                            </tr>
-                            <tr v-if="filteredVocab.length === 0">
-                                <td :colspan="currentBook.type === 'word' ? 5 : 3" class="p-10 text-center text-slate-300">
-                                    <div class="text-3xl mb-2 opacity-30">📚</div>
-                                    {{ searchQuery ? '未找到匹配的单词或释义' : '暂无数据' }}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div v-else class="flex-1 flex flex-col items-center justify-center text-slate-300">
-                <i class="fas fa-book-open text-4xl mb-4 opacity-50"></i>
-                <p>请从左侧选择一个单词本</p>
+            <div class="shrink-0 pl-4 border-l border-slate-100">
+                <button @click="openCreateModal" class="h-[46px] px-5 rounded-xl border border-dashed border-indigo-300 text-indigo-500 hover:bg-indigo-50 flex items-center justify-center gap-2 transition font-bold text-sm bg-white shrink-0 active:scale-95">
+                    <i class="fas fa-plus"></i> 新建词库
+                </button>
             </div>
         </div>
 
-        <div class="w-80 shrink-0 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl shadow-xl flex flex-col p-6 overflow-hidden relative border border-slate-700/50">
-            <div class="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500 rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
+        <div class="flex-1 flex gap-4 min-h-0">
             
-            <div class="relative z-10 h-full flex flex-col">
-                <h3 class="font-bold text-lg mb-6 flex items-center gap-2"><i class="fas fa-toolbox text-indigo-400"></i> 英语工具箱</h3>
+            <div class="w-[260px] shrink-0 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl shadow-xl flex flex-col p-5 overflow-hidden relative border border-slate-700/50">
+                <div class="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500 rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
                 
-                <div class="grid grid-cols-2 gap-3 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] pr-1 content-start">
+                <div class="relative z-10 h-full flex flex-col">
+                    <h3 class="font-bold text-lg mb-5 flex items-center gap-2 text-indigo-300 tracking-wider uppercase text-sm">
+                        <i class="fas fa-toolbox"></i> 英语工具箱
+                    </h3>
                     
-                    <button @click="openReciteSetup('read')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
-                        <div class="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-2xl transition group-hover:bg-blue-500 group-hover:text-white shadow-lg shadow-blue-500/0 group-hover:shadow-blue-500/30">
-                            <i class="fas fa-volume-up"></i>
-                        </div>
-                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">朗读单词</span>
-                    </button>
+                    <div class="flex flex-col gap-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                        
+                        <button @click="openReciteSetup('read')" class="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-500/30 rounded-2xl p-3 text-left transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm flex items-center gap-4 w-full">
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl transition group-hover:bg-blue-500 group-hover:text-white shrink-0 shadow-lg shadow-blue-500/0 group-hover:shadow-blue-500/30">
+                                <i class="fas fa-volume-up"></i>
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <h4 class="font-bold text-sm leading-tight text-slate-200 group-hover:text-white transition">朗读单词</h4>
+                                <p class="text-[10px] text-blue-200/60 mt-1 truncate">自动连读 · 语感培养</p>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-[10px] text-white/10 group-hover:text-white/50 transition"></i>
+                        </button>
 
-                    <button @click="openReciteSetup('memorize')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
-                        <div class="w-12 h-12 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center text-2xl transition group-hover:bg-pink-500 group-hover:text-white shadow-lg shadow-pink-500/0 group-hover:shadow-pink-500/30">
-                            <i class="fas fa-brain"></i>
-                        </div>
-                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">背诵单词</span>
-                    </button>
+                        <button @click="openReciteSetup('memorize')" class="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-pink-500/30 rounded-2xl p-3 text-left transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm flex items-center gap-4 w-full">
+                            <div class="w-12 h-12 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center text-xl transition group-hover:bg-pink-500 group-hover:text-white shrink-0 shadow-lg shadow-pink-500/0 group-hover:shadow-pink-500/30">
+                                <i class="fas fa-brain"></i>
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <h4 class="font-bold text-sm leading-tight text-slate-200 group-hover:text-white transition">背诵单词</h4>
+                                <p class="text-[10px] text-pink-200/60 mt-1 truncate">5遍跟读 · 强力灌入</p>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-[10px] text-white/10 group-hover:text-white/50 transition"></i>
+                        </button>
 
-                    <button @click="openReciteSetup('match')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
-                        <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl transition group-hover:bg-emerald-500 group-hover:text-white shadow-lg shadow-emerald-500/0 group-hover:shadow-emerald-500/30">
-                            <i class="fas fa-project-diagram"></i>
-                        </div>
-                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">单词连线</span>
-                    </button>
+                        <button @click="openReciteSetup('match')" class="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-emerald-500/30 rounded-2xl p-3 text-left transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm flex items-center gap-4 w-full">
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl transition group-hover:bg-emerald-500 group-hover:text-white shrink-0 shadow-lg shadow-emerald-500/0 group-hover:shadow-emerald-500/30">
+                                <i class="fas fa-project-diagram"></i>
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <h4 class="font-bold text-sm leading-tight text-slate-200 group-hover:text-white transition">单词连线</h4>
+                                <p class="text-[10px] text-emerald-200/60 mt-1 truncate">盲测 · 全局乱序</p>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-[10px] text-white/10 group-hover:text-white/50 transition"></i>
+                        </button>
 
-                    <button @click="openReciteSetup('recite')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
-                        <div class="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl transition group-hover:bg-indigo-500 group-hover:text-white shadow-lg shadow-indigo-500/0 group-hover:shadow-indigo-500/30">
-                            <i class="fas fa-pencil-alt"></i>
-                        </div>
-                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">默写单词</span>
-                    </button>
+                        <button @click="openReciteSetup('recite')" class="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-indigo-500/30 rounded-2xl p-3 text-left transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm flex items-center gap-4 w-full">
+                            <div class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl transition group-hover:bg-indigo-500 group-hover:text-white shrink-0 shadow-lg shadow-indigo-500/0 group-hover:shadow-indigo-500/30">
+                                <i class="fas fa-pencil-alt"></i>
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <h4 class="font-bold text-sm leading-tight text-slate-200 group-hover:text-white transition">默写单词</h4>
+                                <p class="text-[10px] text-indigo-200/60 mt-1 truncate">看中文 · 默写英文</p>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-[10px] text-white/10 group-hover:text-white/50 transition"></i>
+                        </button>
 
-                    <button @click="openReciteSetup('dictate')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
-                        <div class="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl transition group-hover:bg-purple-500 group-hover:text-white shadow-lg shadow-purple-500/0 group-hover:shadow-purple-500/30">
-                            <i class="fas fa-headphones"></i>
-                        </div>
-                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">听写单词</span>
-                    </button>
+                        <button @click="openReciteSetup('dictate')" class="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-500/30 rounded-2xl p-3 text-left transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm flex items-center gap-4 w-full">
+                            <div class="w-12 h-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-xl transition group-hover:bg-purple-500 group-hover:text-white shrink-0 shadow-lg shadow-purple-500/0 group-hover:shadow-purple-500/30">
+                                <i class="fas fa-headphones"></i>
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <h4 class="font-bold text-sm leading-tight text-slate-200 group-hover:text-white transition">听写单词</h4>
+                                <p class="text-[10px] text-purple-200/60 mt-1 truncate">听发音 · 拼写英文</p>
+                            </div>
+                            <i class="fas fa-chevron-right ml-auto text-[10px] text-white/10 group-hover:text-white/50 transition"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-white/10 flex flex-col gap-3 shrink-0">
+                        <button @click="openMistakeBook" class="w-full bg-white/5 hover:bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:text-orange-300 rounded-xl p-3.5 font-bold shadow-sm flex items-center justify-center gap-2 transition transform active:scale-95 text-sm">
+                            <i class="fas fa-fire"></i> 错词回顾记录
+                        </button>
+                        <button @click="startEbbinghausReview" class="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-3.5 font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition transform active:scale-95 relative overflow-hidden text-sm">
+                            <i class="fas fa-chart-line"></i> 遗忘曲线复习 
+                            <span v-if="ebbinghausReviewList.length > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs ml-1">{{ ebbinghausReviewList.length }}</span>
+                        </button>
+                    </div>
                 </div>
-                
-                <div class="mt-4 flex flex-col gap-3">
-                    <button @click="openMistakeBook" class="w-full bg-white/5 hover:bg-white/10 border border-orange-500/30 text-orange-400 hover:text-orange-300 rounded-xl p-3 font-bold shadow-lg flex items-center justify-center gap-2 transition transform active:scale-95 text-sm">
-                        <i class="fas fa-fire"></i> 错词回顾
-                    </button>
-                    <button @click="startEbbinghausReview" class="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-3 font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition transform active:scale-95 relative overflow-hidden text-sm">
-                        <i class="fas fa-chart-line"></i> 遗忘曲线复习 
-                        <span v-if="ebbinghausReviewList.length > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs ml-1">{{ ebbinghausReviewList.length }}</span>
-                    </button>
+            </div>
+
+            <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col min-w-0 relative">
+                <div v-if="currentBook" class="flex flex-col h-full">
+                    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 rounded-t-3xl">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl border border-indigo-100">
+                                <i :class="currentBook.icon"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-xl leading-tight flex items-center gap-2">
+                                    {{ currentBook.name }}
+                                    <button @click="openEditBookModal" class="text-slate-300 hover:text-indigo-500 text-sm transition"><i class="fas fa-pen"></i></button>
+                                </h3>
+                                <p class="text-xs text-slate-400 mt-0.5 font-medium">当前共 {{ vocabulary.length }} 个内容</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-3 items-center">
+                            <div class="relative group hidden sm:block">
+                                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs group-focus-within:text-indigo-500 transition-colors"></i>
+                                <input v-model="searchQuery" placeholder="搜索单词或释义..." class="pl-8 pr-8 py-2 w-56 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none transition bg-slate-50 focus:bg-white text-slate-600">
+                                <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><i class="fas fa-times-circle"></i></button>
+                            </div>
+
+                            <button v-if="currentBook.type === 'word'" @click="handleUpdateAllPhonetics" :disabled="isUpdatingPhonetics" class="h-9 px-3 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition border border-amber-100 font-bold text-sm gap-1.5" title="一键更新所有单词音标">
+                                <i class="fas" :class="isUpdatingPhonetics ? 'fa-circle-notch fa-spin' : 'fa-magic'"></i>
+                                <span class="hidden md:inline">音标补全</span>
+                            </button>
+                            <div class="w-px h-6 bg-slate-200 mx-1"></div>
+                            
+                            <div class="flex bg-slate-50 rounded-xl border border-slate-200 p-1">
+                                <button @click="handleDownload" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-white hover:text-indigo-600 hover:shadow-sm flex items-center justify-center transition" title="下载模板"><i class="fas fa-download text-sm"></i></button>
+                                <label class="w-8 h-8 rounded-lg text-slate-500 hover:bg-white hover:text-indigo-600 hover:shadow-sm flex items-center justify-center transition cursor-pointer" title="导入 Excel">
+                                    <i class="fas fa-file-import text-sm"></i>
+                                    <input type="file" class="hidden" accept=".xlsx" @change="(e) => $emit('upload', e)">
+                                </label>
+                                <button @click="handleExport" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-white hover:text-indigo-600 hover:shadow-sm flex items-center justify-center transition" title="导出 Excel"><i class="fas fa-file-export text-sm"></i></button>
+                            </div>
+                            <button @click="$emit('deleteBook', currentBook.id)" class="w-9 h-9 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition border border-red-100 ml-1" title="删除词库"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 bg-slate-50/50 border-b border-slate-100 flex gap-2 items-center shrink-0">
+                        <input v-model="localNewWord.word" :placeholder="currentBook.type === 'word' ? '录入新单词...' : '录入新短语...'" class="w-1/3 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 focus:outline-none bg-white font-bold" @keyup.enter="handleAddWord">
+                        <div v-if="isFetching" class="flex items-center gap-1 text-xs text-indigo-400 font-bold px-2"><i class="fas fa-circle-notch fa-spin"></i></div>
+                        <select v-if="currentBook.type === 'word'" v-model="localNewWord.pos" class="w-24 px-2 py-2.5 rounded-xl border border-slate-200 text-sm bg-white cursor-pointer"><option v-for="opt in posOptions" :value="opt.value">{{ opt.label }}</option></select>
+                        <input v-model="localNewWord.meaning" placeholder="中文释义..." class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 focus:outline-none bg-white" @keyup.enter="handleAddWord">
+                        <button @click="handleAddWord" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 hover:bg-indigo-700 transition active:scale-95 flex items-center gap-2"><i class="fas fa-paper-plane"></i> 添加</button>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-0">
+                        <table class="w-full text-sm text-left border-collapse">
+                            <thead class="text-slate-400 bg-white sticky top-0 z-10 text-xs uppercase font-bold shadow-sm">
+                                <tr>
+                                    <th class="p-4 pl-6">单词/短语</th>
+                                    <th v-if="currentBook.type === 'word'" class="p-4">音标</th>
+                                    <th v-if="currentBook.type === 'word'" class="p-4">词性</th>
+                                    <th class="p-4">释义</th>
+                                    <th class="p-4 text-center w-48">操作面板</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <tr v-for="v in filteredVocab" :key="v.id" class="group hover:bg-indigo-50/30 transition-colors">
+                                    <template v-if="editingId !== v.id">
+                                        <td class="p-4 pl-6 font-bold text-slate-700 text-base select-all">{{ v.word }}</td>
+                                        <td v-if="currentBook.type === 'word'" class="p-4 font-mono text-slate-400 text-xs">{{ v.phonetic }}</td>
+                                        <td v-if="currentBook.type === 'word'" class="p-4">
+                                            <span class="text-xs px-2 py-0.5 rounded border font-bold whitespace-nowrap" :class="getPosColor(v.pos)">{{ v.pos }}</span>
+                                        </td>
+                                        <td class="p-4 text-slate-600">{{ v.meaning }}</td>
+                                        <td class="p-4 text-center flex justify-center gap-2 opacity-30 group-hover:opacity-100 transition-opacity">
+                                            <button @click="openMemoryDecoder(v.word)" class="w-8 h-8 flex items-center justify-center text-amber-500 bg-amber-50 rounded-lg hover:bg-amber-100 transition shadow-sm border border-amber-100" title="AI 记忆解码"><i class="fas fa-lightbulb"></i></button>
+                                            <button @click="speakWord(v.word)" class="w-8 h-8 flex items-center justify-center text-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 transition" title="朗读此词"><i class="fas fa-volume-up"></i></button>
+                                            <button @click="startEdit(v)" class="w-8 h-8 flex items-center justify-center text-indigo-500 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition" title="编辑"><i class="fas fa-pen text-xs"></i></button>
+                                            <button @click="$emit('deleteWord', v.id)" class="w-8 h-8 flex items-center justify-center text-red-400 bg-red-50 rounded-lg hover:bg-red-100 transition" title="删除"><i class="fas fa-trash-alt text-xs"></i></button>
+                                        </td>
+                                    </template>
+                                    <template v-else>
+                                        <td class="p-3 pl-6"><input v-model="editForm.word" class="w-full px-3 py-1.5 border border-indigo-300 rounded-lg text-slate-700 font-bold outline-none ring-2 ring-indigo-100"></td>
+                                        <td v-if="currentBook.type === 'word'" class="p-3"><input v-model="editForm.phonetic" class="w-full px-3 py-1.5 border border-indigo-300 rounded-lg font-mono text-xs outline-none ring-2 ring-indigo-100"></td>
+                                        <td v-if="currentBook.type === 'word'" class="p-3">
+                                            <select v-model="editForm.pos" class="w-full text-xs px-2 py-1.5 border border-indigo-300 rounded-lg bg-white">
+                                                <option v-for="o in posOptions" :value="o.value">{{ o.value }}</option>
+                                            </select>
+                                        </td>
+                                        <td class="p-3"><input v-model="editForm.meaning" class="w-full px-3 py-1.5 border border-indigo-300 rounded-lg outline-none ring-2 ring-indigo-100" @keyup.enter="saveEdit"></td>
+                                        <td class="p-3 text-center flex justify-center gap-2">
+                                            <button @click="saveEdit" class="w-8 h-8 flex items-center justify-center text-emerald-500 bg-emerald-50 rounded-lg hover:bg-emerald-100"><i class="fas fa-check"></i></button>
+                                            <button @click="cancelEdit" class="w-8 h-8 flex items-center justify-center text-slate-400 bg-slate-50 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button>
+                                        </td>
+                                    </template>
+                                </tr>
+                                <tr v-if="filteredVocab.length === 0">
+                                    <td :colspan="currentBook.type === 'word' ? 5 : 3" class="p-16 text-center text-slate-300">
+                                        <i class="fas fa-box-open text-5xl mb-4 opacity-30 block"></i>
+                                        <span class="text-lg">{{ searchQuery ? '未找到匹配的单词或释义' : '词库空空如也，快来添加吧' }}</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div v-else class="flex-1 flex flex-col items-center justify-center text-slate-300">
+                    <i class="fas fa-book-open text-6xl mb-6 opacity-30"></i>
+                    <p class="text-lg">请在顶部选择一个词库开始学习</p>
                 </div>
             </div>
         </div>
 
         <div v-if="showCreateModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl scale-up max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <h3 class="text-lg font-bold mb-4 text-slate-800">{{ isEditingBook ? '编辑本子属性' : '创建新单词/短语本' }}</h3>
-                <div class="space-y-4">
-                    <div><label class="block text-xs font-bold text-slate-500 mb-1">名称</label><input v-model="newBookForm.name" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-indigo-500 outline-none text-sm transition" placeholder="例如: 考研核心词"></div>
-                    <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl scale-up max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <h3 class="text-xl font-bold mb-6 text-slate-800">{{ isEditingBook ? '编辑本子属性' : '✨ 创建新词库' }}</h3>
+                <div class="space-y-5">
+                    <div><label class="block text-xs font-bold text-slate-500 mb-1">名称</label><input v-model="newBookForm.name" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-sm transition" placeholder="例如: 考研核心词"></div>
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">年级</label>
-                            <select v-model="newBookForm.grade" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-indigo-500 outline-none text-sm bg-white cursor-pointer">
+                            <select v-model="newBookForm.grade" class="w-full px-3 py-3 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-sm bg-white cursor-pointer">
                                 <option v-for="g in gradeOptions" :value="g">{{g}}</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">学期</label>
-                            <select v-model="newBookForm.term" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-indigo-500 outline-none text-sm bg-white cursor-pointer">
+                            <select v-model="newBookForm.term" class="w-full px-3 py-3 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-sm bg-white cursor-pointer">
                                 <option v-for="t in termOptions" :value="t">{{t}}</option>
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">类型</label>
-                            <div class="flex bg-slate-100 p-1 rounded-lg" :class="{'opacity-50 pointer-events-none': isEditingBook}">
-                                <button @click="newBookForm.type='word'" class="flex-1 py-1.5 text-xs font-bold rounded transition-all" :class="newBookForm.type==='word'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-600'">单词</button>
-                                <button @click="newBookForm.type='phrase'" class="flex-1 py-1.5 text-xs font-bold rounded transition-all" :class="newBookForm.type==='phrase'?'bg-white shadow text-purple-600':'text-slate-500 hover:text-slate-600'">短语</button>
+                            <div class="flex bg-slate-100 p-1 rounded-xl" :class="{'opacity-50 pointer-events-none': isEditingBook}">
+                                <button @click="newBookForm.type='word'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="newBookForm.type==='word'?'bg-white shadow text-indigo-600':'text-slate-500 hover:text-slate-600'">单词</button>
+                                <button @click="newBookForm.type='phrase'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="newBookForm.type==='phrase'?'bg-white shadow text-purple-600':'text-slate-500 hover:text-slate-600'">短语</button>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">排序 (数字小靠前)</label>
-                            <input v-model.number="newBookForm.sortOrder" type="number" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:border-indigo-500 outline-none text-sm transition text-center">
+                            <input v-model.number="newBookForm.sortOrder" type="number" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-sm transition text-center">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">图标</label>
+                        <label class="block text-xs font-bold text-slate-500 mb-2">选择图标</label>
                         <div class="flex flex-wrap gap-2">
-                            <button v-for="ic in bookIcons" :key="ic.icon" @click="newBookForm.icon = ic.icon" class="w-8 h-8 rounded border flex items-center justify-center transition" :class="newBookForm.icon === ic.icon ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-400 hover:border-slate-300 hover:bg-slate-50'">
+                            <button v-for="ic in bookIcons" :key="ic.icon" @click="newBookForm.icon = ic.icon" class="w-10 h-10 rounded-xl border flex items-center justify-center transition text-lg" :class="newBookForm.icon === ic.icon ? 'border-indigo-500 bg-indigo-50 text-indigo-600 shadow-inner' : 'border-slate-200 text-slate-400 hover:border-slate-300 hover:bg-slate-50'">
                                 <i :class="ic.icon"></i>
                             </button>
                         </div>
                     </div>
                 </div>
-                <div class="flex gap-3 mt-6">
-                    <button @click="showCreateModal=false" class="flex-1 py-2 text-slate-500 hover:bg-slate-50 rounded-lg transition text-sm font-bold">取消</button>
-                    <button @click="handleSaveBook" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md hover:bg-indigo-700 transition transform active:scale-95 text-sm">{{ isEditingBook ? '保存' : '创建' }}</button>
+                <div class="flex gap-4 mt-8">
+                    <button @click="showCreateModal=false" class="flex-1 py-3 text-slate-500 hover:bg-slate-50 rounded-xl transition text-sm font-bold">取消</button>
+                    <button @click="handleSaveBook" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition transform active:scale-95 text-sm">{{ isEditingBook ? '保存修改' : '创建词库' }}</button>
                 </div>
             </div>
         </div>
 
         <div v-if="showMistakeBook" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl scale-up text-slate-800 overflow-hidden">
-                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div class="bg-white rounded-3xl w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl scale-up text-slate-800 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                     <h3 class="font-bold text-xl text-orange-500 flex items-center gap-2"><i class="fas fa-fire"></i> 错词回顾</h3>
-                    <button @click="showMistakeBook=false" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"><i class="fas fa-times"></i></button>
+                    <button @click="showMistakeBook=false" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="flex flex-1 overflow-hidden">
                     <div class="w-1/4 bg-slate-50 border-r border-slate-200 overflow-y-auto custom-scrollbar">
-                        <div v-if="sortedMistakeDates.length === 0" class="p-4 text-center text-xs text-slate-400">暂无错词记录</div>
+                        <div v-if="sortedMistakeDates.length === 0" class="p-6 text-center text-sm text-slate-400">暂无错词记录</div>
                         <div v-for="date in sortedMistakeDates" :key="date" 
                              @click="selectedMistakeDate = date"
-                             class="p-4 cursor-pointer transition-all border-b border-slate-100 hover:bg-white group"
+                             class="p-5 cursor-pointer transition-all border-b border-slate-100 hover:bg-white group"
                              :class="selectedMistakeDate === date ? 'bg-white border-l-4 border-l-orange-500 shadow-sm' : 'border-l-4 border-l-transparent text-slate-500'">
-                            <div class="font-bold text-sm mb-1 font-mono" :class="selectedMistakeDate === date ? 'text-slate-800' : ''">{{ date }}</div>
+                            <div class="font-bold text-base mb-1 font-mono" :class="selectedMistakeDate === date ? 'text-slate-800' : ''">{{ date }}</div>
                             <div class="text-xs flex items-center justify-between">
-                                <span :class="selectedMistakeDate === date ? 'text-orange-500' : 'text-slate-400'">{{ mistakeGroups[date].length }} 词</span>
+                                <span :class="selectedMistakeDate === date ? 'text-orange-500 font-bold' : 'text-slate-400'">{{ mistakeGroups[date].length }} 词</span>
                                 <i class="fas fa-chevron-right text-[10px] opacity-0 group-hover:opacity-50 transition" :class="selectedMistakeDate === date ? 'opacity-100 text-orange-400' : ''"></i>
                             </div>
                         </div>
                     </div>
-                    <div class="flex-1 bg-white overflow-y-auto p-6 custom-scrollbar">
+                    <div class="flex-1 bg-white overflow-y-auto p-8 custom-scrollbar">
                         <div v-if="selectedMistakeDate && mistakeGroups[selectedMistakeDate]">
-                            <h4 class="font-bold text-lg mb-4 text-slate-700 flex items-center gap-2">
+                            <h4 class="font-bold text-xl mb-6 text-slate-700 flex items-center gap-2">
                                 <i class="far fa-calendar-alt text-slate-400"></i> {{ selectedMistakeDate }} 错词列表
                             </h4>
-                            <div class="flex flex-col gap-3">
-                                <div v-for="item in mistakeGroups[selectedMistakeDate]" :key="item.id" class="p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow bg-slate-50/50 group flex justify-between items-center">
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 font-black text-lg flex items-center justify-center border border-red-100 shadow-sm shrink-0">{{ item.count }}</div>
+                            <div class="flex flex-col gap-4">
+                                <div v-for="item in mistakeGroups[selectedMistakeDate]" :key="item.id" class="p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow bg-slate-50/50 group flex justify-between items-center">
+                                    <div class="flex items-center gap-5">
+                                        <div class="w-12 h-12 rounded-xl bg-red-50 text-red-600 font-black text-xl flex items-center justify-center border border-red-100 shadow-sm shrink-0">{{ item.count }}</div>
                                         <div>
-                                            <div class="font-black text-xl text-slate-800">{{ item.word }}</div>
-                                            <div class="text-sm text-slate-500 mt-0.5">{{ item.meaning }}</div>
+                                            <div class="font-black text-2xl text-slate-800">{{ item.word }}</div>
+                                            <div class="text-sm text-slate-500 mt-1">{{ item.meaning }}</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
-                            <i class="fas fa-inbox text-5xl opacity-30"></i>
-                            <p>请选择左侧日期查看详情</p>
+                        <div v-else class="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                            <i class="fas fa-inbox text-6xl opacity-30"></i>
+                            <p class="text-lg">请选择左侧日期查看详情</p>
                         </div>
                     </div>
                 </div>
@@ -762,26 +793,26 @@ export default {
         </div>
 
         <div v-if="showReciteSetup" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl scale-up text-slate-800 flex flex-col max-h-[90vh]">
-                <h3 class="text-xl font-bold mb-5 flex items-center gap-2">
+            <div class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl scale-up text-slate-800 flex flex-col max-h-[90vh]">
+                <h3 class="text-2xl font-bold mb-6 flex items-center gap-2">
                     <i class="fas" :class="{'fa-pencil-alt text-indigo-500': reciteConfig.studyMode === 'recite', 'fa-headphones text-purple-500': reciteConfig.studyMode === 'dictate', 'fa-project-diagram text-emerald-500': reciteConfig.studyMode === 'match', 'fa-brain text-pink-500': reciteConfig.studyMode === 'memorize', 'fa-volume-up text-blue-500': reciteConfig.studyMode === 'read'}"></i> 
                     {{ getSetupTitle() }}
                 </h3>
-                <div class="space-y-5 overflow-y-auto px-1">
-                    <div v-if="['dictate', 'memorize', 'read'].includes(reciteConfig.studyMode)" class="bg-slate-50 p-3 rounded-xl border border-slate-200 animate-fade-in space-y-3">
-                        <div><label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">发音 Voice</label><select v-model="selectedVoiceURI" class="w-full text-xs p-1 rounded border border-slate-200 bg-white"><option v-for="v in voices" :value="v.voiceURI">{{ v.name }}</option></select></div>
-                        <div><label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">语速 Speed ({{ ttsRate }}x)</label><input type="range" v-model.number="ttsRate" min="0.5" max="2" step="0.1" class="w-full accent-indigo-500 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"></div>
-                        <div v-if="reciteConfig.studyMode === 'read'" class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
-                            <div><label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">朗读次数 (次)</label><input type="number" v-model.number="reciteConfig.readRepeat" min="1" max="10" class="w-full px-2 py-1.5 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500 bg-white"></div>
-                            <div><label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">间隔时间 (秒)</label><input type="number" v-model.number="reciteConfig.readInterval" min="0" max="10" step="0.5" class="w-full px-2 py-1.5 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500 bg-white"></div>
+                <div class="space-y-6 overflow-y-auto px-1 custom-scrollbar">
+                    <div v-if="['dictate', 'memorize', 'read'].includes(reciteConfig.studyMode)" class="bg-slate-50 p-4 rounded-2xl border border-slate-200 animate-fade-in space-y-4">
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">发音 Voice</label><select v-model="selectedVoiceURI" class="w-full text-sm p-2.5 rounded-xl border border-slate-200 bg-white outline-none focus:border-indigo-500"><option v-for="v in voices" :value="v.voiceURI">{{ v.name }}</option></select></div>
+                        <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">语速 Speed ({{ ttsRate }}x)</label><input type="range" v-model.number="ttsRate" min="0.5" max="2" step="0.1" class="w-full accent-indigo-500 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"></div>
+                        <div v-if="reciteConfig.studyMode === 'read'" class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+                            <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">朗读次数 (次)</label><input type="number" v-model.number="reciteConfig.readRepeat" min="1" max="10" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 bg-white"></div>
+                            <div><label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">间隔时间 (秒)</label><input type="number" v-model.number="reciteConfig.readInterval" min="0" max="10" step="0.5" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 bg-white"></div>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">选择参与测试的单词本</label>
-                        <div class="max-h-32 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1 custom-scrollbar">
-                            <div v-for="b in filteredBooksList" :key="b.id" @click="toggleBookSelection(b.id)" class="flex items-center gap-3 p-2 rounded-lg cursor-pointer transition" :class="reciteConfig.selectedBookIds.includes(b.id) ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-slate-50'">
-                                <div class="w-5 h-5 rounded border flex items-center justify-center transition" :class="reciteConfig.selectedBookIds.includes(b.id) ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-white text-transparent'"><i class="fas fa-check text-xs"></i></div>
-                                <div class="flex-1"><span class="text-sm font-bold text-slate-700 block leading-none">{{ b.name }}</span><span class="text-[10px] text-slate-400">{{ b.grade }} · {{ b.term }}</span></div>
+                        <label class="block text-sm font-bold text-slate-600 mb-3 tracking-wide">选择参与测试的单词本</label>
+                        <div class="max-h-40 overflow-y-auto border border-slate-200 rounded-2xl p-2 space-y-1.5 custom-scrollbar">
+                            <div v-for="b in filteredBooksList" :key="b.id" @click="toggleBookSelection(b.id)" class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition" :class="reciteConfig.selectedBookIds.includes(b.id) ? 'bg-indigo-50 border border-indigo-100' : 'hover:bg-slate-50 border border-transparent'">
+                                <div class="w-6 h-6 rounded-md border flex items-center justify-center transition" :class="reciteConfig.selectedBookIds.includes(b.id) ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 bg-white text-transparent'"><i class="fas fa-check text-xs"></i></div>
+                                <div class="flex-1"><span class="text-sm font-bold text-slate-700 block leading-none">{{ b.name }}</span><span class="text-xs text-slate-400 mt-1 inline-block">{{ b.grade }} · {{ b.term }}</span></div>
                             </div>
                         </div>
                     </div>
@@ -798,14 +829,14 @@ export default {
                             <div class="flex bg-slate-100 p-1 rounded-xl relative">
                                 <button @click="reciteConfig.mode='unlimited'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.mode==='unlimited'?'bg-white shadow text-emerald-600':'text-slate-500'">♾️</button>
                                 <button @click="reciteConfig.mode='timed'" class="flex-1 py-2 text-xs font-bold rounded-lg transition-all" :class="reciteConfig.mode==='timed'?'bg-white shadow text-orange-600':'text-slate-500'">⏳</button>
-                                <input v-if="reciteConfig.mode==='timed'" v-model.number="reciteConfig.duration" type="number" class="absolute -top-8 right-0 w-12 text-center text-xs border rounded shadow px-1 py-0.5" placeholder="min">
+                                <input v-if="reciteConfig.mode==='timed'" v-model.number="reciteConfig.duration" type="number" class="absolute -top-10 right-0 w-16 text-center text-sm font-bold border border-slate-200 rounded-lg shadow-sm px-2 py-1 outline-none focus:border-indigo-500" placeholder="min">
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="flex gap-3 mt-6">
-                    <button @click="showReciteSetup=false" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">取消</button>
-                    <button @click="handleStartRecitation" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition transform active:scale-95">开始</button>
+                <div class="flex gap-4 mt-8">
+                    <button @click="showReciteSetup=false" class="flex-1 py-3.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">取消</button>
+                    <button @click="handleStartRecitation" class="flex-1 py-3.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition transform active:scale-95">开始学习</button>
                 </div>
             </div>
         </div>
@@ -949,11 +980,11 @@ export default {
             <template v-if="matchGameMode === 'playing'">
                 <div class="p-6 flex justify-between items-center bg-slate-50 border-b border-slate-100">
                     <div class="text-slate-500 font-bold flex gap-4 items-center">
-                        <span class="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg text-sm border border-emerald-100 shadow-sm">
+                        <span class="text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl text-sm border border-emerald-100 shadow-sm">
                             <i class="fas fa-layer-group mr-2"></i>本轮进度: {{ Math.min((matchCurrentRound + 1) * 20, matchTotalQueue.length) }} / {{ matchTotalQueue.length }}
                         </span>
                     </div>
-                    <button @click="submitMatchRound" class="px-6 py-2 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200">
+                    <button @click="submitMatchRound" class="px-8 py-2.5 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200 active:scale-95">
                         {{ (matchCurrentRound + 1) * 20 >= matchTotalQueue.length ? '完成测试' : '下一组' }} <i class="fas fa-arrow-right ml-1"></i>
                     </button>
                 </div>
@@ -988,35 +1019,38 @@ export default {
             </template>
             <template v-else>
                 <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-slate-800">测试结果汇总</h3>
-                    <div class="flex gap-4 text-sm font-bold">
-                        <span class="text-emerald-500">正确: {{ matchCorrectList.length }}</span>
-                        <span class="text-red-500">错误: {{ matchWrongList.length }}</span>
+                    <h3 class="text-2xl font-bold text-slate-800">测试结果汇总</h3>
+                    <div class="flex gap-6 text-base font-bold bg-white px-6 py-2 rounded-xl shadow-sm border border-slate-100">
+                        <span class="text-emerald-500"><i class="fas fa-check-circle mr-1"></i> 正确: {{ matchCorrectList.length }}</span>
+                        <span class="text-red-500"><i class="fas fa-times-circle mr-1"></i> 错误: {{ matchWrongList.length }}</span>
                     </div>
-                    <button @click="exitMatchGame" class="px-6 py-2 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700 transition">结束测试</button>
+                    <button @click="exitMatchGame" class="px-8 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 transition shadow-lg active:scale-95">结束测试</button>
                 </div>
                 <div class="flex-1 flex overflow-hidden">
-                    <div class="flex-1 border-r border-slate-100 bg-emerald-50/10 p-6 overflow-y-auto">
-                        <h4 class="text-sm font-bold text-emerald-600 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-check-circle"></i> Correct Matches</h4>
-                        <div class="space-y-2">
-                            <div v-for="res in matchCorrectList" :key="res.word" class="flex justify-between items-center p-3 bg-white border border-emerald-100 rounded-lg shadow-sm">
-                                <span class="font-bold text-slate-700">{{ res.word }}</span>
+                    <div class="flex-1 border-r border-slate-100 bg-emerald-50/20 p-8 overflow-y-auto custom-scrollbar">
+                        <h4 class="text-lg font-bold text-emerald-600 mb-6 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-check-circle"></i> 完美配对 (Correct)</h4>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                            <div v-for="res in matchCorrectList" :key="res.word" class="flex flex-col p-4 bg-white border border-emerald-100 rounded-2xl shadow-sm hover:shadow-md transition">
+                                <span class="font-black text-slate-800 text-lg mb-1">{{ res.word }}</span>
                                 <span class="text-sm text-slate-500">{{ res.correctMeaning }}</span>
                             </div>
-                            <div v-if="matchCorrectList.length === 0" class="text-center text-slate-400 py-10 italic">没有正确配对... 加油！</div>
+                            <div v-if="matchCorrectList.length === 0" class="col-span-full text-center text-slate-400 py-10 italic">没有正确配对... 加油！</div>
                         </div>
                     </div>
-                    <div class="flex-1 bg-red-50/10 p-6 overflow-y-auto">
-                        <h4 class="text-sm font-bold text-red-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-times-circle"></i> Incorrect Matches</h4>
-                        <div class="space-y-2">
-                            <div v-for="res in matchWrongList" :key="res.word" class="p-3 bg-white border border-red-100 rounded-lg shadow-sm">
-                                <div class="flex justify-between items-center mb-1">
-                                    <span class="font-bold text-red-600 line-through">{{ res.word }}</span>
-                                    <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Correct: {{ res.correctMeaning }}</span>
+                    <div class="flex-1 bg-red-50/20 p-8 overflow-y-auto custom-scrollbar">
+                        <h4 class="text-lg font-bold text-red-500 mb-6 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-times-circle"></i> 需要复习 (Incorrect)</h4>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div v-for="res in matchWrongList" :key="res.word" class="flex flex-col p-4 bg-white border border-red-100 rounded-2xl shadow-sm hover:shadow-md transition">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="font-black text-red-600 line-through text-lg">{{ res.word }}</span>
                                 </div>
-                                <div class="text-xs text-slate-400">你选择了: {{ res.userMeaning }}</div>
+                                <div class="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg mb-2">正确: {{ res.correctMeaning }}</div>
+                                <div class="text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg">你的选择: {{ res.userMeaning }}</div>
                             </div>
-                            <div v-if="matchWrongList.length === 0" class="text-center text-emerald-400 py-10 font-bold text-xl">全对！太棒了！🎉</div>
+                            <div v-if="matchWrongList.length === 0" class="col-span-full text-center text-emerald-400 py-20 flex flex-col items-center">
+                                <i class="fas fa-crown text-6xl mb-4 opacity-50"></i>
+                                <span class="font-bold text-2xl">全对！太棒了！🎉</span>
+                            </div>
                         </div>
                     </div>
                 </div>
