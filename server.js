@@ -23,6 +23,8 @@ app.use('/api/occlusion', require('./routes/imageOcclusion')); // [新增] 图�
 app.use('/api/mistakelog', require('./routes/mistakeLogs'));
 // [新增] 注册独立的分类路由
 app.use('/api/categories', require('./routes/categories'));
+// [新增] 注册学习日志路由
+app.use('/api/learninglog', require('./routes/learningLogs'));
 
 app.listen(PORT, () => {
     console.log(`Memory OS running at http://localhost:${PORT}`);

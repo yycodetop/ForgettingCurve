@@ -10,11 +10,13 @@ export default {
         const mistakes = ref([]);
         const showModal = ref(false);
         
+        // [新增] 学科筛选状态
+        const filterSubject = ref('');
+
         const isEditing = ref(false);
         const editingId = ref(null);
         const newMistakeForm = ref({ recorder: '', title: '', subject: '', description: '', images: [] });
         
-        // --- 核心更新：复习日志的独立 Modal 状态 ---
         const reviewLogsModal = ref({ show: false, mistake: null });
         const openReviewLogsModal = (mistake) => {
             reviewLogsModal.value = { show: true, mistake };
@@ -148,6 +150,37 @@ export default {
             }
         };
 
+        // --- 核心更新：在排序前先进行学科过滤 ---
+        const sortedMistakes = computed(() => {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 1. 过滤学科
+            let filteredList = mistakes.value;
+            if (filterSubject.value) {
+                filteredList = mistakes.value.filter(m => m.subject === filterSubject.value);
+            }
+
+            // 2. 排序
+            return [...filteredList].sort((a, b) => {
+                const getNextDateTimestamp = (mistake) => {
+                    const schedule = mistake.ebbinghausSchedule || [];
+                    const nextDateStr = schedule.find(d => d >= today);
+                    // 如果已经没有下次复习日期（复习完结），返回 Infinity 把它排到最后
+                    return nextDateStr ? new Date(nextDateStr).getTime() : Infinity;
+                };
+                
+                const timeA = getNextDateTimestamp(a);
+                const timeB = getNextDateTimestamp(b);
+                
+                // 如果复习日期相同，则把最新录入的排在前面
+                if (timeA === timeB) {
+                    return new Date(b.date).getTime() - new Date(a.date).getTime();
+                }
+                
+                return timeA - timeB;
+            });
+        });
+
         const todaysReviews = computed(() => {
             const today = new Date().toISOString().split('T')[0];
             return mistakes.value.filter(m => {
@@ -213,10 +246,11 @@ export default {
         onMounted(fetchMistakes);
 
         return {
-            mistakes, showModal, newMistakeForm, isEditing,
+            mistakes, sortedMistakes, showModal, newMistakeForm, isEditing,
+            filterSubject, // [新增] 导出给模板使用
             todaysReviews, getNextReviewInfo,
             viewerState, openViewer, closeViewer, nextImg, prevImg, submitReviewLog,
-            reviewLogsModal, openReviewLogsModal, closeReviewLogsModal, // 导出新的日志 Modal 控制
+            reviewLogsModal, openReviewLogsModal, closeReviewLogsModal,
             handleImageUpload, removeImage, submitMistake,
             openAddModal, openEditModal, deleteMistake
         };
@@ -226,14 +260,28 @@ export default {
             
             <div class="flex-1 flex flex-col min-w-0">
                 <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h2 class="text-xl font-bold text-slate-800">全部错题记录</h2>
+                    <div class="flex items-center gap-4">
+                        <h2 class="text-xl font-bold text-slate-800">
+                        <i class="fas fa-book-dead text-emerald-500"></i> 全部错题记录
+                        </h2>
+                        <select v-model="filterSubject" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition cursor-pointer">
+                            <option value="">全部分类</option>
+                            <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+                        </select>
+                    </div>
+                    
                     <button @click="openAddModal" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition">
                         <i class="fas fa-plus mr-2"></i> 录入错题
                     </button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-6 bg-slate-50/30 custom-scrollbar grid grid-cols-1 xl:grid-cols-2 gap-4 content-start">
-                    <div v-for="item in mistakes" :key="item.id" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col group transition-all hover:shadow-md">
+                    <div v-if="sortedMistakes.length === 0" class="col-span-full text-center text-slate-400 py-12 flex flex-col items-center">
+                        <i class="fas fa-inbox text-4xl mb-3 opacity-30"></i>
+                        <p>该分类下暂无错题记录</p>
+                    </div>
+
+                    <div v-for="item in sortedMistakes" :key="item.id" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col group transition-all hover:shadow-md">
                         <div class="flex justify-between items-start mb-2">
                             <div class="flex items-center gap-2">
                                 <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg">{{ item.subject }}</span>
@@ -250,7 +298,7 @@ export default {
                         </div>
                         
                         <h3 class="font-bold text-slate-800 text-lg mb-2 truncate cursor-pointer hover:text-indigo-600 transition" :title="item.title" @click="openViewer(item)">{{ item.title }}</h3>
-                        <p class="text-sm text-slate-600 mb-4 line-clamp-2 flex-1 cursor-pointer" @click="openViewer(item)">{{ item.description }}</p>
+                        <p class="text-sm text-slate-600 mb-4 truncate flex-1 cursor-pointer" :title="item.description" @click="openViewer(item)">{{ item.description }}</p>
                         
                         <div class="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between">
                             <div class="text-xs">
@@ -261,7 +309,7 @@ export default {
                                 <i class="fas fa-history"></i> 查看复习日志 ({{ item.reviewLogs ? item.reviewLogs.length : 0 }})
                             </button>
                         </div>
-                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -285,12 +333,12 @@ export default {
                             <div v-if="task.reviewedToday" class="text-emerald-500 text-sm"><i class="fas fa-check-circle"></i> 已复习</div>
                             <div v-else class="text-amber-500 text-xs font-bold px-2 py-0.5 bg-amber-50 rounded-md">待复习</div>
                         </div>
-                        <h4 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600 transition">{{ task.title }}</h4>
+                        <h4 class="font-bold text-slate-800 text-sm truncate group-hover:text-indigo-600 transition" :title="task.title">{{ task.title }}</h4>
                     </div>
                 </div>
             </div>
 
-            <div v-if="reviewLogsModal.show" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div v-if="reviewLogsModal.show" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in">
                 <div class="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 scale-up max-h-[80vh] flex flex-col">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -325,6 +373,7 @@ export default {
                     </div>
                 </div>
             </div>
+
             <div v-if="viewerState.show" class="fixed inset-0 bg-slate-900/95 z-[100] flex flex-col items-center animate-fade-in backdrop-blur-sm">
                 <div class="w-full p-6 flex justify-between items-center">
                     <div class="text-white">
@@ -362,7 +411,7 @@ export default {
                 </div>
             </div>
 
-            <div v-if="showModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div v-if="showModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
                 <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl p-8 scale-up max-h-[90vh] overflow-y-auto">
                     <h3 class="text-2xl font-bold mb-6 text-slate-800">{{ isEditing ? '✏️ 编辑错题' : '✨ 录入新错题' }}</h3>
                     <div class="grid grid-cols-2 gap-4 mb-4">

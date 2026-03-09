@@ -21,6 +21,7 @@ import FeynmanApp from './apps/FeynmanApp.js';
 import ImageOcclusionApp from './apps/ImageOcclusionApp.js'; 
 import TheDock from './components/TheDock.js';
 import MistakeApp from './apps/MistakeApp.js';
+import LearningLogApp from './apps/LearningLogApp.js'; // [新增]
 
 const app = createApp({
     components: { 
@@ -30,7 +31,8 @@ const app = createApp({
         FeynmanApp, 
         ImageOcclusionApp, 
         TheDock,
-        MistakeApp
+        MistakeApp,
+        LearningLogApp
     },
     template: `
     <div id="app" v-cloak class="h-full flex flex-col relative">
@@ -43,6 +45,7 @@ const app = createApp({
                 <span v-else-if="currentApp === 'feynman'"> 费曼自测</span>
                 <span v-else-if="currentApp === 'occlusion'"> 图像遮挡</span>
                 <span v-else-if="currentApp === 'mistakes'"> 错题日志</span>
+                <span v-else-if="currentApp === 'learninglog'">学习日志</span> 
             </div>
             <div v-if="currentApp === 'dashboard'" class="flex items-center bg-slate-200/50 rounded-full p-1 text-sm">
                 <button @click="changeMonth(-1)" class="w-8 h-8 rounded-full hover:bg-white flex items-center justify-center text-slate-500 transition">←</button>
@@ -91,6 +94,10 @@ const app = createApp({
                 @create-ebbinghaus-task="handleCreateMistakeTask"
             ></mistake-app>
 
+            <learning-log-app v-if="currentApp === 'learninglog'"
+                :categories="categories"
+                @create-ebbinghaus-task="handleCreateMistakeTask"
+            ></learning-log-app>
         </main>
 
         <the-dock 

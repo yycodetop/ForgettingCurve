@@ -45,7 +45,9 @@ export default {
                 // 把下面这行的 id 从 'image' 改为 'occlusion'
                 { id: 'occlusion', name: '图片遮挡', icon: 'fas fa-image', hoverClass: 'hover:text-pink-500 hover:border-pink-200', activeClass: 'bg-pink-500 text-white shadow-lg shadow-pink-500/40 transform -translate-y-2' },
                 { id: 'feynman', name: '费曼自测', icon: 'fas fa-chalkboard-teacher', hoverClass: 'hover:text-cyan-500 hover:border-cyan-200', activeClass: 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/40 transform -translate-y-2' },
-                { id: 'mistakes', name: '错题日志', icon: 'fas fa-book-dead', activeClass: 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 ring-2 ring-rose-200 transform -translate-y-2' }
+                { id: 'mistakes', name: '错题日志', icon: 'fas fa-book-dead', activeClass: 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 ring-2 ring-rose-200 transform -translate-y-2' },
+                // [新增] 学习日志入口
+                { id: 'learninglog', name: '学习日志', icon: 'fas fa-seedling', activeClass: 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/40 ring-2 ring-emerald-200 transform -translate-y-2' }
             ]
         }
     }
