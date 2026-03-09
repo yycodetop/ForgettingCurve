@@ -1,6 +1,6 @@
 /**
  * js/apps/EnglishApp.js
- * 英语工作室 (包含：模糊搜索、朗读优化、AI横向三列沉浸式记忆解码、连线测试Bug修复)
+ * 英语工作室 (包含：UI布局简化重构、右侧工具箱瘦身与网格化、模糊搜索、朗读优化、AI沉浸式记忆解码)
  */
 import { ref, computed, watch, nextTick, onUnmounted, onMounted } from 'vue';
 import { useTTS } from '../composables/useTTS.js';
@@ -51,8 +51,8 @@ export default {
             isLoading: false, 
             word: '', 
             content: '',
-            parsedContent: [], // 用于存储拆解后的三列数据
-            isParsed: false    // 标记是否成功拆解
+            parsedContent: [], 
+            isParsed: false    
         });
 
         // --- 4. 错词本与艾宾浩斯 ---
@@ -190,42 +190,29 @@ export default {
         const isSelected = (item) => matchSelection.value && matchSelection.value.cardId === item.cardId;
 
         // --- 业务逻辑 ---
-        
-        // [核心升级] AI 解码方法：增加内容智能拆分与清洗逻辑
         const openMemoryDecoder = async (wordStr) => {
             decoderState.value = { show: true, isLoading: true, word: wordStr, content: '', parsedContent: [], isParsed: false };
-            
             try {
                 const res = await fetch('/api/ai/memory-decoder', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ word: wordStr })
                 });
-                
                 const data = await res.json();
-                
                 if (data.success) { 
-                    // 1. 强力清洗 Markdown 标记
                     let text = data.content.replace(/```(html)?\n?/gi, '').replace(/```\n?/g, '');
-                    
-                    // 2. 尝试寻找三大模块的标志性 Emoji
                     const split1 = text.indexOf('🧩');
                     const split2 = text.indexOf('💡');
                     const split3 = text.indexOf('🎯');
-                    
-                    // 3. 如果成功识别到了三个部分，进行分割
                     if (split1 !== -1 && split2 !== -1 && split3 !== -1) {
                         const raw1 = text.substring(split1, split2);
                         const raw2 = text.substring(split2, split3);
                         const raw3 = text.substring(split3);
-
-                        // 清洗函数：剥离掉大标题 <b>...</b> 和多余的空标签
                         const cleanPart = (str) => {
                             let s = str.replace(/[\s\S]*?<\/b>[:：]?\s*/i, '');
                             s = s.replace(/^(?:<\/p>|<br\s*\/?>)\s*/i, '');
                             return s.trim();
                         };
-
                         decoderState.value.parsedContent = [
                              { title: '词根词缀', icon: '🧩', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', content: cleanPart(raw1) },
                              { title: '趣味记忆', icon: '💡', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', content: cleanPart(raw2) },
@@ -233,20 +220,15 @@ export default {
                         ];
                         decoderState.value.isParsed = true;
                     } else {
-                        // 降级显示：如果 AI 没有按照格式返回，则直接显示完整文本并修复高亮
                         text = text.replace(/<b>/gi, '<b class="text-amber-400 font-black px-1">');
                         decoderState.value.content = text;
                         decoderState.value.isParsed = false;
                     }
                 } 
-                else { 
-                    decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">${data.error}</div>`; 
-                }
+                else { decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">${data.error}</div>`; }
             } catch (err) {
                 decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">网络请求失败，请检查 Node.js Server 是否开启。</div>`;
-            } finally {
-                decoderState.value.isLoading = false;
-            }
+            } finally { decoderState.value.isLoading = false; }
         };
 
         const openCreateModal = () => { 
@@ -480,7 +462,7 @@ export default {
     template: `
     <div class="h-full flex gap-6">
         
-        <div class="flex-[2] bg-white rounded-3xl shadow-sm border border-slate-100 flex overflow-hidden">
+        <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 flex overflow-hidden min-w-0">
             <div class="w-56 bg-slate-50 border-r border-slate-100 flex flex-col py-4 gap-3 shrink-0 h-full">
                 <div class="px-3 flex flex-col gap-2">
                     <select v-model="filterGrade" class="w-full text-xs p-1.5 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 bg-white">
@@ -576,7 +558,7 @@ export default {
                                 <th v-if="currentBook.type === 'word'" class="p-3">音标</th>
                                 <th v-if="currentBook.type === 'word'" class="p-3">词性</th>
                                 <th class="p-3">释义</th>
-                                <th class="p-3 text-center">操作</th>
+                                <th class="p-3 text-center w-40">操作</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-50">
@@ -629,24 +611,56 @@ export default {
             </div>
         </div>
 
-        <div class="flex-1 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl shadow-xl flex flex-col p-6 overflow-hidden relative border border-slate-700/50">
+        <div class="w-80 shrink-0 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl shadow-xl flex flex-col p-6 overflow-hidden relative border border-slate-700/50">
             <div class="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500 rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
+            
             <div class="relative z-10 h-full flex flex-col">
-                <h3 class="font-bold text-xl mb-6 flex items-center gap-2"><i class="fas fa-toolbox text-indigo-400"></i> 英语工具箱</h3>
-                <div class="flex flex-col gap-3 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] pr-1">
-                    <button @click="openReciteSetup('read')" class="group bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center text-xl shadow-lg shadow-blue-500/30 shrink-0"><i class="fas fa-volume-up"></i></div><div><h4 class="font-bold text-lg leading-tight">朗读单词</h4><p class="text-xs text-blue-200/60 mt-1">自动连读 · 语感培养</p></div><i class="fas fa-chevron-right ml-auto text-white/20 group-hover:text-white/60 transition"></i></button>
-                    <button @click="openReciteSetup('memorize')" class="group bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-pink-500 text-white flex items-center justify-center text-xl shadow-lg shadow-pink-500/30 shrink-0"><i class="fas fa-brain"></i></div><div><h4 class="font-bold text-lg leading-tight">背诵单词</h4><p class="text-xs text-pink-200/60 mt-1">5遍跟读 · 强力灌入</p></div><i class="fas fa-chevron-right ml-auto text-white/20 group-hover:text-white/60 transition"></i></button>
-                    <button @click="openReciteSetup('match')" class="group bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-xl shadow-lg shadow-emerald-500/30 shrink-0"><i class="fas fa-project-diagram"></i></div><div><h4 class="font-bold text-lg leading-tight">单词连线</h4><p class="text-xs text-emerald-200/60 mt-1">盲测 · 全局乱序</p></div><i class="fas fa-chevron-right ml-auto text-white/20 group-hover:text-white/60 transition"></i></button>
-                    <button @click="openReciteSetup('recite')" class="group bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-indigo-500 text-white flex items-center justify-center text-xl shadow-lg shadow-indigo-500/30 shrink-0"><i class="fas fa-pencil-alt"></i></div><div><h4 class="font-bold text-lg leading-tight">默写单词</h4><p class="text-xs text-indigo-200/60 mt-1">看中文 · 默写英文</p></div><i class="fas fa-chevron-right ml-auto text-white/20 group-hover:text-white/60 transition"></i></button>
-                    <button @click="openReciteSetup('dictate')" class="group bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex items-center gap-4"><div class="w-12 h-12 rounded-xl bg-purple-500 text-white flex items-center justify-center text-xl shadow-lg shadow-purple-500/30 shrink-0"><i class="fas fa-headphones"></i></div><div><h4 class="font-bold text-lg leading-tight">听写单词</h4><p class="text-xs text-purple-200/60 mt-1">听发音 · 拼写英文</p></div><i class="fas fa-chevron-right ml-auto text-white/20 group-hover:text-white/60 transition"></i></button>
+                <h3 class="font-bold text-lg mb-6 flex items-center gap-2"><i class="fas fa-toolbox text-indigo-400"></i> 英语工具箱</h3>
+                
+                <div class="grid grid-cols-2 gap-3 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] pr-1 content-start">
+                    
+                    <button @click="openReciteSetup('read')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
+                        <div class="w-12 h-12 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-2xl transition group-hover:bg-blue-500 group-hover:text-white shadow-lg shadow-blue-500/0 group-hover:shadow-blue-500/30">
+                            <i class="fas fa-volume-up"></i>
+                        </div>
+                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">朗读单词</span>
+                    </button>
+
+                    <button @click="openReciteSetup('memorize')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
+                        <div class="w-12 h-12 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center text-2xl transition group-hover:bg-pink-500 group-hover:text-white shadow-lg shadow-pink-500/0 group-hover:shadow-pink-500/30">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">背诵单词</span>
+                    </button>
+
+                    <button @click="openReciteSetup('match')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
+                        <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl transition group-hover:bg-emerald-500 group-hover:text-white shadow-lg shadow-emerald-500/0 group-hover:shadow-emerald-500/30">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">单词连线</span>
+                    </button>
+
+                    <button @click="openReciteSetup('recite')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
+                        <div class="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl transition group-hover:bg-indigo-500 group-hover:text-white shadow-lg shadow-indigo-500/0 group-hover:shadow-indigo-500/30">
+                            <i class="fas fa-pencil-alt"></i>
+                        </div>
+                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">默写单词</span>
+                    </button>
+
+                    <button @click="openReciteSetup('dictate')" class="group bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-center transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col items-center justify-center gap-3 aspect-square">
+                        <div class="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl transition group-hover:bg-purple-500 group-hover:text-white shadow-lg shadow-purple-500/0 group-hover:shadow-purple-500/30">
+                            <i class="fas fa-headphones"></i>
+                        </div>
+                        <span class="font-bold text-sm text-slate-200 group-hover:text-white transition">听写单词</span>
+                    </button>
                 </div>
                 
-                <div class="mt-4 flex gap-3">
-                    <button @click="openMistakeBook" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-xl p-3 font-bold shadow-lg shadow-orange-500/30 flex items-center justify-center gap-2 transition transform active:scale-95">
-                        <i class="fas fa-fire"></i> 错词本
+                <div class="mt-4 flex flex-col gap-3">
+                    <button @click="openMistakeBook" class="w-full bg-white/5 hover:bg-white/10 border border-orange-500/30 text-orange-400 hover:text-orange-300 rounded-xl p-3 font-bold shadow-lg flex items-center justify-center gap-2 transition transform active:scale-95 text-sm">
+                        <i class="fas fa-fire"></i> 错词回顾
                     </button>
-                    <button @click="startEbbinghausReview" class="flex-[2] bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-3 font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition transform active:scale-95 relative overflow-hidden">
-                        <i class="fas fa-chart-line"></i> 遗忘曲线听写 
+                    <button @click="startEbbinghausReview" class="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-3 font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition transform active:scale-95 relative overflow-hidden text-sm">
+                        <i class="fas fa-chart-line"></i> 遗忘曲线复习 
                         <span v-if="ebbinghausReviewList.length > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs ml-1">{{ ebbinghausReviewList.length }}</span>
                     </button>
                 </div>
@@ -809,7 +823,6 @@ export default {
             </div>
 
             <div class="flex-1 w-full max-w-7xl flex flex-col items-center relative px-6 md:px-12 pb-12 overflow-y-auto custom-scrollbar">
-                
                 <div class="text-center mt-4 mb-10 shrink-0">
                     <span class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-amber-300 via-orange-400 to-pink-500 select-all tracking-wider drop-shadow-2xl">
                         {{ decoderState.word }}
