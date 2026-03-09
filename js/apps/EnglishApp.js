@@ -1,6 +1,6 @@
 /**
  * js/apps/EnglishApp.js
- * 英语工作室 (v21.0: 新增单词列表朗读与自动单词朗读模式)
+ * 英语工作室 (新增：单词本模糊搜索、朗读中途秒退优化)
  */
 import { ref, computed, watch, nextTick, onUnmounted, onMounted } from 'vue';
 import { useTTS } from '../composables/useTTS.js';
@@ -43,6 +43,9 @@ export default {
         const localNewWord = ref({ word: '', phonetic: '', pos: 'n.', meaning: '' });
         const isFetching = ref(false); 
         const isUpdatingPhonetics = ref(false);
+        
+        // [新增] 模糊搜索关键字
+        const searchQuery = ref('');
 
         // 错词本与艾宾浩斯
         const showMistakeBook = ref(false);
@@ -55,7 +58,7 @@ export default {
         const showReciteSetup = ref(false);
         const reciteConfig = ref({ 
             selectedBookIds: [], order: 'random', mode: 'unlimited', studyMode: 'recite', duration: 10,
-            readRepeat: 2, readInterval: 1.5 // [新增] 朗读模式的默认配置
+            readRepeat: 2, readInterval: 1.5
         });
         const isWaitingForReciteData = ref(false);
         const isReciting = ref(false);
@@ -74,7 +77,7 @@ export default {
         const memorizeStage = ref(0); 
         const flashCount = ref(0); 
         const memorizeSessionId = ref(0);
-        const readSessionId = ref(0); // [新增] 朗读模式的会话控制
+        const readSessionId = ref(0); 
 
         // 连线测试状态
         const isMatchingGame = ref(false);
@@ -93,7 +96,19 @@ export default {
         const matchResults = ref([]);    
 
         // --- Computed ---
-        const filteredVocab = computed(() => props.vocabulary);
+        // [修改] 结合模糊搜索进行数据过滤
+        const filteredVocab = computed(() => {
+            let list = props.vocabulary || [];
+            if (searchQuery.value.trim()) {
+                const q = searchQuery.value.trim().toLowerCase();
+                list = list.filter(v => 
+                    v.word.toLowerCase().includes(q) || 
+                    v.meaning.toLowerCase().includes(q)
+                );
+            }
+            return list;
+        });
+        
         const mistakeGroups = computed(() => { const groups = {}; mistakeList.value.forEach(m => { if (!groups[m.date]) groups[m.date] = []; groups[m.date].push(m); }); return groups; });
         const sortedMistakeDates = computed(() => Object.keys(mistakeGroups.value).sort((a, b) => new Date(b) - new Date(a)));
         const currentReciteWord = computed(() => reciteQueue.value[reciteIndex.value] || null);
@@ -103,7 +118,14 @@ export default {
         const matchWrongList = computed(() => matchResults.value.filter(r => !r.isCorrect));
 
         // --- 监听器 ---
-        watch(() => props.currentBook, (newVal) => { if (newVal) { localNewWord.value.pos = newVal.type === 'word' ? 'n.' : 'phrase'; editingId.value = null; } }, { immediate: true });
+        watch(() => props.currentBook, (newVal) => { 
+            if (newVal) { 
+                localNewWord.value.pos = newVal.type === 'word' ? 'n.' : 'phrase'; 
+                editingId.value = null; 
+                searchQuery.value = ''; // 切换单词本时清空搜索框
+            } 
+        }, { immediate: true });
+        
         watch(() => props.recitationData, (newData) => {
             if (isWaitingForReciteData.value && newData.length > 0) {
                 if (reciteConfig.value.studyMode === 'match') initMatchGame(newData);
@@ -269,24 +291,30 @@ export default {
             }
         };
 
-        // [新增] 自动朗读逻辑
+        // [修改] 优化后的可中断自动朗读逻辑
         const startAutoRead = async () => {
             const currentSession = readSessionId.value;
             const word = currentReciteWord.value;
             if (!word) return;
 
             for (let i = 0; i < reciteConfig.value.readRepeat; i++) {
+                // 如果用户点击了退出，立刻终止
                 if (readSessionId.value !== currentSession || !isReciting.value) return;
                 
                 await speak(word.word, 'en');
                 
                 if (readSessionId.value !== currentSession || !isReciting.value) return;
                 
-                // 每次朗读完毕，若未被中断则等待设定的时间
-                await new Promise(resolve => setTimeout(resolve, reciteConfig.value.readInterval * 1000));
+                // 将大块的等待时间拆分成极小的轮询时间片，实现“秒断”功能
+                const waitTime = reciteConfig.value.readInterval * 1000;
+                const step = 100;
+                for(let t = 0; t < waitTime; t += step) {
+                    if (readSessionId.value !== currentSession || !isReciting.value) return; // 轮询检查退出状态
+                    await new Promise(resolve => setTimeout(resolve, Math.min(step, waitTime - t)));
+                }
             }
             
-            // 当前单词的次数朗读结束，进入下一个单词
+            // 正常结束且未被中断，自动进入下一个
             if (readSessionId.value === currentSession && isReciting.value) {
                 nextWord();
             }
@@ -377,7 +405,7 @@ export default {
             showCreateModal, isEditingBook, newBookForm, editingId, editForm, localNewWord, isFetching,
             openCreateModal, openEditBookModal, handleSaveBook, handleAddWord, startEdit, saveEdit, cancelEdit, getPosColor,
             handleExport: () => emit('exportBook', props.currentBook?.id), handleDownload: () => emit('download'),
-            filteredVocab, 
+            filteredVocab, searchQuery, // [导出] searchQuery
             
             filterGrade, filterTerm, filterType, gradeOptions, termOptions, filteredBooksList,
             
@@ -396,7 +424,6 @@ export default {
             ebbinghausReviewList, isEbbinghausReview, startEbbinghausReview,
             autoFillPhonetic: fetchPhonetic, isFetchingPhonetic: isFetching, handleUpdateAllPhonetics, isUpdatingPhonetics,
             
-            // [新增] 导出提供给列表循环中的单独朗读方法
             speakWord: (word) => speak(word, 'en')
         };
     },
@@ -452,7 +479,14 @@ export default {
             <div class="flex-1 flex flex-col min-w-0" v-if="currentBook">
                 <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white">
                     <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg"><i :class="currentBook.icon"></i></div><div><h3 class="font-bold text-slate-800 leading-tight flex items-center gap-2">{{ currentBook.name }}<button @click="openEditBookModal" class="text-slate-300 hover:text-indigo-500 text-xs transition"><i class="fas fa-pen"></i></button></h3><p class="text-xs text-slate-400">{{ vocabulary.length }} 条 · {{ currentBook.grade || '未分级' }} · {{ currentBook.term || '全学年' }}</p></div></div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 items-center">
+                        
+                        <div class="relative mr-2 group">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs group-focus-within:text-indigo-500 transition-colors"></i>
+                            <input v-model="searchQuery" placeholder="搜索单词或释义..." class="pl-8 pr-8 py-1.5 w-48 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 outline-none transition bg-slate-50 focus:bg-white text-slate-600">
+                            <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><i class="fas fa-times-circle"></i></button>
+                        </div>
+
                         <button v-if="currentBook.type === 'word'" @click="handleUpdateAllPhonetics" :disabled="isUpdatingPhonetics" class="w-8 h-8 rounded-lg bg-amber-50 text-amber-500 hover:bg-amber-100 flex items-center justify-center transition border border-amber-100 relative overflow-hidden" title="一键更新所有单词音标">
                             <i class="fas" :class="isUpdatingPhonetics ? 'fa-circle-notch fa-spin' : 'fa-magic'"></i>
                         </button>
@@ -473,7 +507,8 @@ export default {
                             <button @click="speakWord(v.word)" class="text-blue-500 bg-blue-50 p-1.5 rounded hover:bg-blue-100 transition" title="朗读此词"><i class="fas fa-volume-up"></i></button>
                             <button @click="startEdit(v)" class="text-indigo-500 bg-indigo-50 p-1.5 rounded hover:bg-indigo-100 transition" title="编辑"><i class="fas fa-pen"></i></button>
                             <button @click="$emit('deleteWord', v.id)" class="text-red-400 bg-red-50 p-1.5 rounded hover:bg-red-100 transition" title="删除"><i class="fas fa-times"></i></button>
-                        </td></template><template v-else><td class="p-3 pl-5"><input v-model="editForm.word" class="w-full px-2 py-1 border border-indigo-300 rounded text-slate-700 font-bold outline-none ring-2 ring-indigo-100"></td><td v-if="currentBook.type === 'word'" class="p-3"><input v-model="editForm.phonetic" class="w-full px-2 py-1 border border-indigo-300 rounded font-mono text-xs outline-none ring-2 ring-indigo-100"></td><td v-if="currentBook.type === 'word'" class="p-3"><select v-model="editForm.pos" class="w-full text-xs px-1 py-1 border border-indigo-300 rounded bg-white"><option v-for="o in posOptions" :value="o.value">{{ o.value }}</option></select></td><td class="p-3"><input v-model="editForm.meaning" class="w-full px-2 py-1 border border-indigo-300 rounded outline-none ring-2 ring-indigo-100" @keyup.enter="saveEdit"></td><td class="p-3 text-center flex justify-center gap-2"><button @click="saveEdit" class="text-emerald-500 bg-emerald-50 p-1.5 rounded hover:bg-emerald-100"><i class="fas fa-check"></i></button><button @click="cancelEdit" class="text-slate-400 bg-slate-50 p-1.5 rounded hover:bg-slate-100"><i class="fas fa-times"></i></button></td></template></tr><tr v-if="filteredVocab.length === 0"><td :colspan="currentBook.type === 'word' ? 5 : 3" class="p-10 text-center text-slate-300"><div class="text-3xl mb-2 opacity-30">📚</div>暂无数据</td></tr></tbody>
+                        </td></template><template v-else><td class="p-3 pl-5"><input v-model="editForm.word" class="w-full px-2 py-1 border border-indigo-300 rounded text-slate-700 font-bold outline-none ring-2 ring-indigo-100"></td><td v-if="currentBook.type === 'word'" class="p-3"><input v-model="editForm.phonetic" class="w-full px-2 py-1 border border-indigo-300 rounded font-mono text-xs outline-none ring-2 ring-indigo-100"></td><td v-if="currentBook.type === 'word'" class="p-3"><select v-model="editForm.pos" class="w-full text-xs px-1 py-1 border border-indigo-300 rounded bg-white"><option v-for="o in posOptions" :value="o.value">{{ o.value }}</option></select></td><td class="p-3"><input v-model="editForm.meaning" class="w-full px-2 py-1 border border-indigo-300 rounded outline-none ring-2 ring-indigo-100" @keyup.enter="saveEdit"></td><td class="p-3 text-center flex justify-center gap-2"><button @click="saveEdit" class="text-emerald-500 bg-emerald-50 p-1.5 rounded hover:bg-emerald-100"><i class="fas fa-check"></i></button><button @click="cancelEdit" class="text-slate-400 bg-slate-50 p-1.5 rounded hover:bg-slate-100"><i class="fas fa-times"></i></button></td></template></tr>
+                        <tr v-if="filteredVocab.length === 0"><td :colspan="currentBook.type === 'word' ? 5 : 3" class="p-10 text-center text-slate-300"><div class="text-3xl mb-2 opacity-30">📚</div>{{ searchQuery ? '未找到匹配的单词或释义' : '暂无数据' }}</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -637,8 +672,13 @@ export default {
                     <div class="text-2xl md:text-3xl text-slate-400 font-mono mb-6 font-medium">/ {{ currentReciteWord?.phonetic || '...' }} /</div>
                     <div class="text-3xl md:text-4xl text-slate-800 font-bold">{{ currentReciteWord?.meaning }}</div>
                 </div>
-                <div class="text-blue-400 font-bold text-xl flex items-center gap-2 animate-pulse">
-                    <i class="fas fa-volume-up"></i> Auto Reading...
+                <div class="text-blue-400 font-bold text-xl flex flex-col items-center gap-6">
+                    <div class="flex items-center gap-2 animate-pulse">
+                        <i class="fas fa-volume-up"></i> Auto Reading...
+                    </div>
+                    <button @click="exitRecitation" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-sm font-bold transition flex items-center gap-2 shadow-sm border border-slate-200 active:scale-95">
+                        <i class="fas fa-sign-out-alt"></i> 退出朗读
+                    </button>
                 </div>
             </div>
 
