@@ -1,6 +1,6 @@
 /**
  * js/apps/EnglishApp.js
- * 英语工作室 (包含：全新顶部筛选栏+横向词库列表、左侧工具箱、主视图最大化、模糊搜索、AI沉浸式记忆解码)
+ * 英语工作室 (包含：顶部下拉筛选、左侧工具箱、单词卡片网格、AI沉浸式记忆解码、四合一遗忘曲线复习)
  */
 import { ref, computed, watch, nextTick, onUnmounted, onMounted } from 'vue';
 import { useTTS } from '../composables/useTTS.js';
@@ -61,8 +61,11 @@ export default {
         const selectedMistakeDate = ref(null); 
         const ebbinghausReviewList = ref([]);
         const isEbbinghausReview = ref(false);
+        
+        // [新增] 遗忘曲线弹窗状态
+        const showEbbinghausModal = ref(false);
 
-        // --- 5. 学习状态 (默写/背诵/朗读等) ---
+        // --- 5. 学习状态 ---
         const showReciteSetup = ref(false);
         const reciteConfig = ref({ 
             selectedBookIds: [], order: 'random', mode: 'unlimited', studyMode: 'recite', duration: 10,
@@ -190,6 +193,8 @@ export default {
         const isSelected = (item) => matchSelection.value && matchSelection.value.cardId === item.cardId;
 
         // --- 业务逻辑 ---
+        
+        // AI 记忆解码
         const openMemoryDecoder = async (wordStr) => {
             decoderState.value = { show: true, isLoading: true, word: wordStr, content: '', parsedContent: [], isParsed: false };
             try {
@@ -288,11 +293,26 @@ export default {
 
         const openMistakeBook = async () => { await loadMistakesData(); if (sortedMistakeDates.value.length > 0) selectedMistakeDate.value = sortedMistakeDates.value[0]; showMistakeBook.value = true; };
 
-        const startEbbinghausReview = () => {
+        // [新增] 打开遗忘曲线模式选择弹窗
+        const openEbbinghausModal = () => {
             if (ebbinghausReviewList.value.length === 0) return alert("太棒了！今天没有需要遗忘曲线复习的错词！🎉");
-            reciteConfig.value.studyMode = 'dictate'; reciteConfig.value.order = 'random'; reciteConfig.value.mode = 'unlimited'; isEbbinghausReview.value = true;
-            isWaitingForReciteData.value = false; showReciteSetup.value = false;
-            initRecitationSession(ebbinghausReviewList.value);
+            showEbbinghausModal.value = true;
+        };
+
+        // [新增] 确认复习方式并执行
+        const confirmEbbinghausReview = (mode) => {
+            reciteConfig.value.studyMode = mode;
+            reciteConfig.value.order = 'random';
+            reciteConfig.value.mode = 'unlimited';
+            isEbbinghausReview.value = true;
+            isWaitingForReciteData.value = false;
+            showEbbinghausModal.value = false;
+
+            if (mode === 'match') {
+                initMatchGame(ebbinghausReviewList.value);
+            } else {
+                initRecitationSession(ebbinghausReviewList.value);
+            }
         };
 
         const openReciteSetup = (mode) => { reciteConfig.value.studyMode = mode; reciteConfig.value.selectedBookIds = props.currentBook ? [props.currentBook.id] : []; showReciteSetup.value = true; };
@@ -435,10 +455,20 @@ export default {
             matchCurrentRound.value++; 
             startMatchRound(); 
         };
-        const exitMatchGame = () => { isMatchingGame.value = false; matchResults.value = []; };
+        
+        // [修复] 退出连线游戏时，也要判断是否需要重置艾宾浩斯状态
+        const exitMatchGame = () => { 
+            isMatchingGame.value = false; 
+            matchResults.value = []; 
+            if (isEbbinghausReview.value) { 
+                isEbbinghausReview.value = false; 
+                loadMistakesData(); 
+            }
+        };
 
         onUnmounted(() => { stopSpeaking(); clearTimeout(autoNextTimer.value); clearInterval(reciteTimer.value); window.removeEventListener('keydown', handleKeydown); });
 
+        // [修复] 确保导出了最新的 openEbbinghausModal 和 confirmEbbinghausReview
         return {
             showCreateModal, isEditingBook, newBookForm, editingId, editForm, localNewWord, isFetching,
             openCreateModal, openEditBookModal, handleSaveBook, handleAddWord, startEdit, saveEdit, cancelEdit, getPosColor,
@@ -454,7 +484,7 @@ export default {
             memorizeStage, flashCount, voices, selectedVoiceURI, ttsRate, isSpeaking, replayAudio,
             getSetupTitle: () => ({ 'recite': '默写设置', 'dictate': '听写设置', 'match': '连线测试设置', 'memorize': '背诵设置', 'read': '朗读设置' }[reciteConfig.value.studyMode] || '学习设置'),
             showMistakeBook, mistakeList, mistakeGroups, selectedMistakeDate, sortedMistakeDates, openMistakeBook,
-            ebbinghausReviewList, isEbbinghausReview, startEbbinghausReview,
+            ebbinghausReviewList, isEbbinghausReview, showEbbinghausModal, openEbbinghausModal, confirmEbbinghausReview,
             autoFillPhonetic: fetchPhonetic, isFetchingPhonetic: isFetching, handleUpdateAllPhonetics, isUpdatingPhonetics,
             decoderState, openMemoryDecoder, speakWord: (word) => speak(word, 'en')
         };
@@ -462,7 +492,7 @@ export default {
     template: `
     <div class="h-full flex flex-col gap-4">
         
-        <div class="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-center gap-4 shrink-0 overflow-hidden">
+        <div class="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-center gap-4 shrink-0 overflow-hidden z-20">
             <div class="flex gap-2 shrink-0 border-r border-slate-100 pr-4">
                 <select v-model="filterGrade" class="text-xs px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-slate-50 text-slate-600 font-medium w-28 cursor-pointer transition">
                     <option value="">全部年级</option>
@@ -509,7 +539,7 @@ export default {
             </div>
         </div>
 
-        <div class="flex-1 flex gap-4 min-h-0">
+        <div class="flex-1 flex gap-4 min-h-0 z-10">
             
             <div class="w-[260px] shrink-0 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl shadow-xl flex flex-col p-5 overflow-hidden relative border border-slate-700/50">
                 <div class="absolute -top-20 -right-20 w-64 h-64 bg-indigo-500 rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
@@ -520,7 +550,6 @@ export default {
                     </h3>
                     
                     <div class="flex flex-col gap-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
-                        
                         <button @click="openReciteSetup('read')" class="group bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-500/30 rounded-2xl p-3 text-left transition-all hover:-translate-y-0.5 active:translate-y-0 shadow-sm flex items-center gap-4 w-full">
                             <div class="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl transition group-hover:bg-blue-500 group-hover:text-white shrink-0 shadow-lg shadow-blue-500/0 group-hover:shadow-blue-500/30">
                                 <i class="fas fa-volume-up"></i>
@@ -581,7 +610,8 @@ export default {
                         <button @click="openMistakeBook" class="w-full bg-white/5 hover:bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:text-orange-300 rounded-xl p-3.5 font-bold shadow-sm flex items-center justify-center gap-2 transition transform active:scale-95 text-sm">
                             <i class="fas fa-fire"></i> 错词回顾记录
                         </button>
-                        <button @click="startEbbinghausReview" class="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-3.5 font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition transform active:scale-95 relative overflow-hidden text-sm">
+                        
+                        <button @click="openEbbinghausModal" class="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-3.5 font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition transform active:scale-95 relative overflow-hidden text-sm">
                             <i class="fas fa-chart-line"></i> 遗忘曲线复习 
                             <span v-if="ebbinghausReviewList.length > 0" class="bg-white/20 px-2 py-0.5 rounded-full text-xs ml-1">{{ ebbinghausReviewList.length }}</span>
                         </button>
@@ -590,6 +620,7 @@ export default {
             </div>
 
             <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col min-w-0 relative">
+                
                 <div v-if="currentBook" class="flex flex-col h-full">
                     <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 rounded-t-3xl">
                         <div class="flex items-center gap-4">
@@ -638,62 +669,131 @@ export default {
                         <button @click="handleAddWord" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 hover:bg-indigo-700 transition active:scale-95 flex items-center gap-2"><i class="fas fa-paper-plane"></i> 添加</button>
                     </div>
                     
-                    <div class="flex-1 overflow-y-auto custom-scrollbar p-0">
-                        <table class="w-full text-sm text-left border-collapse">
-                            <thead class="text-slate-400 bg-white sticky top-0 z-10 text-xs uppercase font-bold shadow-sm">
-                                <tr>
-                                    <th class="p-4 pl-6">单词/短语</th>
-                                    <th v-if="currentBook.type === 'word'" class="p-4">音标</th>
-                                    <th v-if="currentBook.type === 'word'" class="p-4">词性</th>
-                                    <th class="p-4">释义</th>
-                                    <th class="p-4 text-center w-48">操作面板</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50">
-                                <tr v-for="v in filteredVocab" :key="v.id" class="group hover:bg-indigo-50/30 transition-colors">
-                                    <template v-if="editingId !== v.id">
-                                        <td class="p-4 pl-6 font-bold text-slate-700 text-base select-all">{{ v.word }}</td>
-                                        <td v-if="currentBook.type === 'word'" class="p-4 font-mono text-slate-400 text-xs">{{ v.phonetic }}</td>
-                                        <td v-if="currentBook.type === 'word'" class="p-4">
-                                            <span class="text-xs px-2 py-0.5 rounded border font-bold whitespace-nowrap" :class="getPosColor(v.pos)">{{ v.pos }}</span>
-                                        </td>
-                                        <td class="p-4 text-slate-600">{{ v.meaning }}</td>
-                                        <td class="p-4 text-center flex justify-center gap-2 opacity-30 group-hover:opacity-100 transition-opacity">
-                                            <button @click="openMemoryDecoder(v.word)" class="w-8 h-8 flex items-center justify-center text-amber-500 bg-amber-50 rounded-lg hover:bg-amber-100 transition shadow-sm border border-amber-100" title="AI 记忆解码"><i class="fas fa-lightbulb"></i></button>
-                                            <button @click="speakWord(v.word)" class="w-8 h-8 flex items-center justify-center text-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 transition" title="朗读此词"><i class="fas fa-volume-up"></i></button>
-                                            <button @click="startEdit(v)" class="w-8 h-8 flex items-center justify-center text-indigo-500 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition" title="编辑"><i class="fas fa-pen text-xs"></i></button>
-                                            <button @click="$emit('deleteWord', v.id)" class="w-8 h-8 flex items-center justify-center text-red-400 bg-red-50 rounded-lg hover:bg-red-100 transition" title="删除"><i class="fas fa-trash-alt text-xs"></i></button>
-                                        </td>
-                                    </template>
-                                    <template v-else>
-                                        <td class="p-3 pl-6"><input v-model="editForm.word" class="w-full px-3 py-1.5 border border-indigo-300 rounded-lg text-slate-700 font-bold outline-none ring-2 ring-indigo-100"></td>
-                                        <td v-if="currentBook.type === 'word'" class="p-3"><input v-model="editForm.phonetic" class="w-full px-3 py-1.5 border border-indigo-300 rounded-lg font-mono text-xs outline-none ring-2 ring-indigo-100"></td>
-                                        <td v-if="currentBook.type === 'word'" class="p-3">
-                                            <select v-model="editForm.pos" class="w-full text-xs px-2 py-1.5 border border-indigo-300 rounded-lg bg-white">
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-5 bg-slate-50/50">
+                        
+                        <div v-if="currentBook.type === 'word'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 content-start">
+                            <div v-for="v in filteredVocab" :key="v.id" class="bg-white rounded-3xl p-5 border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col relative min-h-[150px] overflow-hidden">
+                                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                
+                                <template v-if="editingId !== v.id">
+                                    <div class="flex justify-between items-start mb-3">
+                                        <span class="text-[11px] font-mono text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">/ {{ v.phonetic || '...' }} /</span>
+                                        <span class="text-[10px] px-2 py-1 rounded-lg border font-bold tracking-wider uppercase bg-white" :class="getPosColor(v.pos)">{{ v.pos }}</span>
+                                    </div>
+                                    <div class="text-2xl font-black text-slate-800 truncate select-all mb-1.5 tracking-tight">{{ v.word }}</div>
+                                    <div class="text-sm text-slate-500 line-clamp-2 flex-1 font-medium">{{ v.meaning }}</div>
+                                    
+                                    <div class="absolute bottom-4 right-4 flex gap-1.5 translate-y-6 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 bg-white/90 backdrop-blur-md shadow-sm border border-slate-100/50 p-1.5 rounded-2xl">
+                                        <button @click="openMemoryDecoder(v.word)" class="w-8 h-8 flex items-center justify-center text-amber-500 hover:bg-amber-400 hover:text-white rounded-xl transition-colors shadow-sm" title="AI 记忆解码"><i class="fas fa-lightbulb"></i></button>
+                                        <button @click="speakWord(v.word)" class="w-8 h-8 flex items-center justify-center text-blue-500 hover:bg-blue-500 hover:text-white rounded-xl transition-colors shadow-sm" title="朗读此词"><i class="fas fa-volume-up"></i></button>
+                                        <button @click="startEdit(v)" class="w-8 h-8 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-xl transition-colors shadow-sm" title="编辑"><i class="fas fa-pen text-xs"></i></button>
+                                        <button @click="$emit('deleteWord', v.id)" class="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors shadow-sm" title="删除"><i class="fas fa-trash-alt text-xs"></i></button>
+                                    </div>
+                                </template>
+
+                                <template v-else>
+                                    <div class="flex flex-col gap-2.5 h-full justify-center relative z-10 bg-white">
+                                        <input v-model="editForm.word" class="w-full px-3 py-1.5 border border-indigo-200 rounded-xl text-slate-700 font-bold outline-none focus:ring-2 ring-indigo-100 text-base transition bg-indigo-50/30">
+                                        <div class="flex gap-2">
+                                            <input v-model="editForm.phonetic" class="flex-1 px-3 py-1.5 border border-indigo-200 rounded-xl font-mono text-xs outline-none focus:ring-2 ring-indigo-100 transition bg-indigo-50/30" placeholder="音标">
+                                            <select v-model="editForm.pos" class="w-20 text-xs px-2 py-1.5 border border-indigo-200 rounded-xl outline-none focus:ring-2 ring-indigo-100 cursor-pointer bg-indigo-50/30 font-bold">
                                                 <option v-for="o in posOptions" :value="o.value">{{ o.value }}</option>
                                             </select>
+                                        </div>
+                                        <input v-model="editForm.meaning" class="w-full px-3 py-1.5 border border-indigo-200 rounded-xl outline-none focus:ring-2 ring-indigo-100 text-sm transition bg-indigo-50/30" @keyup.enter="saveEdit" placeholder="中文释义">
+                                        <div class="absolute -bottom-2 -right-2 flex gap-2">
+                                            <button @click="saveEdit" class="w-10 h-10 flex items-center justify-center text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition"><i class="fas fa-check"></i></button>
+                                            <button @click="cancelEdit" class="w-10 h-10 flex items-center justify-center text-white bg-slate-400 rounded-xl hover:bg-slate-500 shadow-lg shadow-slate-200 transition"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div v-if="filteredVocab.length === 0" class="col-span-full py-20 flex flex-col items-center justify-center text-slate-300">
+                                <i class="fas fa-box-open text-6xl mb-4 opacity-30"></i>
+                                <span class="text-lg font-bold">{{ searchQuery ? '未找到匹配的单词或释义' : '词库空空如也，快来添加吧' }}</span>
+                            </div>
+                        </div>
+
+                        <div v-else class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                            <table class="w-full text-sm text-left border-collapse">
+                                <thead class="text-slate-400 bg-slate-50 text-xs uppercase font-bold border-b border-slate-200">
+                                    <tr>
+                                        <th class="p-4 pl-6">短语内容</th>
+                                        <th class="p-4">中文释义</th>
+                                        <th class="p-4 text-center w-40">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr v-for="v in filteredVocab" :key="v.id" class="group hover:bg-indigo-50/30 transition-colors">
+                                        <template v-if="editingId !== v.id">
+                                            <td class="p-4 pl-6 font-bold text-slate-700 text-base select-all">{{ v.word }}</td>
+                                            <td class="p-4 text-slate-600 font-medium">{{ v.meaning }}</td>
+                                            <td class="p-4 text-center flex justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+                                                <button @click="speakWord(v.word)" class="w-8 h-8 flex items-center justify-center text-blue-500 bg-blue-50 rounded-lg hover:bg-blue-100 transition" title="朗读此词"><i class="fas fa-volume-up"></i></button>
+                                                <button @click="startEdit(v)" class="w-8 h-8 flex items-center justify-center text-indigo-500 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition" title="编辑"><i class="fas fa-pen text-xs"></i></button>
+                                                <button @click="$emit('deleteWord', v.id)" class="w-8 h-8 flex items-center justify-center text-red-400 bg-red-50 rounded-lg hover:bg-red-100 transition" title="删除"><i class="fas fa-trash-alt text-xs"></i></button>
+                                            </td>
+                                        </template>
+                                        <template v-else>
+                                            <td class="p-3 pl-6"><input v-model="editForm.word" class="w-full px-3 py-2 border border-indigo-300 rounded-xl text-slate-700 font-bold outline-none ring-2 ring-indigo-100"></td>
+                                            <td class="p-3"><input v-model="editForm.meaning" class="w-full px-3 py-2 border border-indigo-300 rounded-xl outline-none ring-2 ring-indigo-100" @keyup.enter="saveEdit"></td>
+                                            <td class="p-3 text-center flex justify-center gap-2">
+                                                <button @click="saveEdit" class="w-8 h-8 flex items-center justify-center text-emerald-500 bg-emerald-50 rounded-lg hover:bg-emerald-100"><i class="fas fa-check"></i></button>
+                                                <button @click="cancelEdit" class="w-8 h-8 flex items-center justify-center text-slate-400 bg-slate-50 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button>
+                                            </td>
+                                        </template>
+                                    </tr>
+                                    <tr v-if="filteredVocab.length === 0">
+                                        <td colspan="3" class="p-16 text-center text-slate-300">
+                                            <i class="fas fa-box-open text-5xl mb-4 opacity-30 block"></i>
+                                            <span class="text-lg">{{ searchQuery ? '未找到匹配的短语或释义' : '短语库空空如也' }}</span>
                                         </td>
-                                        <td class="p-3"><input v-model="editForm.meaning" class="w-full px-3 py-1.5 border border-indigo-300 rounded-lg outline-none ring-2 ring-indigo-100" @keyup.enter="saveEdit"></td>
-                                        <td class="p-3 text-center flex justify-center gap-2">
-                                            <button @click="saveEdit" class="w-8 h-8 flex items-center justify-center text-emerald-500 bg-emerald-50 rounded-lg hover:bg-emerald-100"><i class="fas fa-check"></i></button>
-                                            <button @click="cancelEdit" class="w-8 h-8 flex items-center justify-center text-slate-400 bg-slate-50 rounded-lg hover:bg-slate-100"><i class="fas fa-times"></i></button>
-                                        </td>
-                                    </template>
-                                </tr>
-                                <tr v-if="filteredVocab.length === 0">
-                                    <td :colspan="currentBook.type === 'word' ? 5 : 3" class="p-16 text-center text-slate-300">
-                                        <i class="fas fa-box-open text-5xl mb-4 opacity-30 block"></i>
-                                        <span class="text-lg">{{ searchQuery ? '未找到匹配的单词或释义' : '词库空空如也，快来添加吧' }}</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
                     </div>
                 </div>
 
                 <div v-else class="flex-1 flex flex-col items-center justify-center text-slate-300">
                     <i class="fas fa-book-open text-6xl mb-6 opacity-30"></i>
-                    <p class="text-lg">请在顶部选择一个词库开始学习</p>
+                    <p class="text-lg font-bold tracking-wider">请在顶部选择一个词库开始学习</p>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="showEbbinghausModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in">
+            <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl scale-up text-slate-800 flex flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold flex items-center gap-2 text-indigo-600">
+                        <i class="fas fa-layer-group"></i> 选择复习方式
+                    </h3>
+                    <button @click="showEbbinghausModal=false" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+                </div>
+                <p class="text-sm text-slate-500 mb-6 leading-relaxed">今天有 <span class="font-bold text-orange-500 text-lg mx-1">{{ ebbinghausReviewList.length }}</span> 个遗忘曲线临期单词，请选择一种方式进行巩固：</p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-2">
+                    <button @click="confirmEbbinghausReview('match')" class="group bg-slate-50 hover:bg-emerald-50 border border-slate-100 hover:border-emerald-200 rounded-2xl p-4 text-center transition-all hover:-translate-y-1 shadow-sm flex flex-col items-center justify-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center text-xl transition group-hover:bg-emerald-500 group-hover:text-white"><i class="fas fa-project-diagram"></i></div>
+                        <span class="font-bold text-sm text-slate-600 group-hover:text-emerald-700">单词连线</span>
+                    </button>
+
+                    <button @click="confirmEbbinghausReview('dictate')" class="group bg-slate-50 hover:bg-purple-50 border border-slate-100 hover:border-purple-200 rounded-2xl p-4 text-center transition-all hover:-translate-y-1 shadow-sm flex flex-col items-center justify-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-purple-100 text-purple-500 flex items-center justify-center text-xl transition group-hover:bg-purple-500 group-hover:text-white"><i class="fas fa-headphones"></i></div>
+                        <span class="font-bold text-sm text-slate-600 group-hover:text-purple-700">听写单词</span>
+                    </button>
+
+                    <button @click="confirmEbbinghausReview('memorize')" class="group bg-slate-50 hover:bg-pink-50 border border-slate-100 hover:border-pink-200 rounded-2xl p-4 text-center transition-all hover:-translate-y-1 shadow-sm flex flex-col items-center justify-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center text-xl transition group-hover:bg-pink-500 group-hover:text-white"><i class="fas fa-brain"></i></div>
+                        <span class="font-bold text-sm text-slate-600 group-hover:text-pink-700">背诵单词</span>
+                    </button>
+
+                    <button @click="confirmEbbinghausReview('recite')" class="group bg-slate-50 hover:bg-indigo-50 border border-slate-100 hover:border-indigo-200 rounded-2xl p-4 text-center transition-all hover:-translate-y-1 shadow-sm flex flex-col items-center justify-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-500 flex items-center justify-center text-xl transition group-hover:bg-indigo-500 group-hover:text-white"><i class="fas fa-pencil-alt"></i></div>
+                        <span class="font-bold text-sm text-slate-600 group-hover:text-indigo-700">默写单词</span>
+                    </button>
                 </div>
             </div>
         </div>
