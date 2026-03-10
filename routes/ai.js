@@ -1,16 +1,24 @@
-// 【新增】忽略本地开发环境下的 SSL 证书验证错误（解决 UNABLE_TO_GET_ISSUER_CERT_LOCALLY 问题）
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const express = require('express');
 const router = express.Router();
 const { OpenAI } = require('openai');
+const fs = require('fs');
+const path = require('path');
 
-// 请确保这里换成了您自己的真实 API Key
+// --- 1. 初始化本地缓存文件 ---
+const CACHE_FILE = path.join(__dirname, '../ai_cache.json');
+if (!fs.existsSync(CACHE_FILE)) {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify({}, null, 2), 'utf8');
+}
+const readCache = () => JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+const writeCache = (data) => fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2), 'utf8');
+
+// 请确保换成您的 API Key
 const AI_API_KEY = 'sk-f6616d15718b46f8921bf2bc5ddf92eb'; 
-
-// 初始化 OpenAI 客户端，指向 DeepSeek 的服务
 const openai = new OpenAI({
-    baseURL: 'https://api.deepseek.com', // 注意：不要加 /v1，SDK会自动处理
+    baseURL: 'https://api.deepseek.com',
+    // baseURL:'https://api.deepseek.com/v3.2_speciale_expires_on_20251215',
     apiKey: AI_API_KEY
 });
 
@@ -19,6 +27,13 @@ router.post('/memory-decoder', async (req, res) => {
 
     if (!word) {
         return res.status(400).json({ error: '请提供需要解码的单词' });
+    }
+
+    // --- 2. 检查缓存：如果查过该词，直接返回缓存结果 ---
+    const cache = readCache();
+    if (cache[word]) {
+        console.log(`[Cache Hit] 从本地缓存读取单词: ${word}`);
+        return res.json({ success: true, cached: true, content: cache[word] });
     }
 
     const prompt = `你是一个非常幽默、擅长启发中小学生的英语魔法老师。
@@ -33,20 +48,59 @@ router.post('/memory-decoder', async (req, res) => {
 注意：语言要生动活泼，多用 Emoji，排版清晰，适合孩子阅读。不要输出多余的解释，直接输出 HTML 内容。`;
 
     try {
-        const completion = await openai.chat.completions.create({
+        console.log(`[API Request] 向大模型请求单词: ${word}`);
+        
+        // --- 3. 开启流式输出请求 (stream: true) ---
+        const stream = await openai.chat.completions.create({
             messages: [{ role: "user", content: prompt }],
             model: "deepseek-chat", 
-            temperature: 0.7 
+            temperature: 0.7,
+            stream: true 
         });
 
-        const aiReply = completion.choices[0].message.content;
-        res.json({ success: true, content: aiReply });
+        // 设置响应头，保持连接并推送数据流 (SSE)
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        let fullContent = '';
+
+        // 监听并实时转发 AI 返回的数据块
+        for await (const chunk of stream) {
+            const text = chunk.choices[0]?.delta?.content || '';
+            if (text) {
+                fullContent += text;
+                // 按 SSE 格式推送给前端
+                res.write(`data: ${JSON.stringify({ text })}\n\n`);
+            }
+        }
+
+        // --- 4. 传输完成，将完整内容存入本地 JSON 缓存 ---
+        cache[word] = fullContent;
+        writeCache(cache);
+
+        // 发送结束标志
+        res.write(`data: [DONE]\n\n`);
+        res.end();
 
     } catch (error) {
         console.error("AI 解码失败:", error);
-        // 如果还有报错，可以通过这里将具体的 error message 返回给前端方便排查
-        res.status(500).json({ success: false, error: '魔法老师暂时走开了，具体原因: ' + error.message });
+        // 如果 HTTP 头还没有发送，返回 JSON 错误；如果已经开始流式发送，则在流中报错
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: '魔法老师暂时走开了，具体原因: ' + error.message });
+        } else {
+            res.write(`data: ${JSON.stringify({ error: '生成过程发生异常' })}\n\n`);
+            res.end();
+        }
     }
 });
-
+// --- 获取已存在本地缓存中的所有被解码过的单词列表 ---
+router.get('/decoded-words', (req, res) => {
+    try {
+        const cache = readCache();
+        res.json(Object.keys(cache));
+    } catch (error) {
+        res.json([]);
+    }
+});
 module.exports = router;

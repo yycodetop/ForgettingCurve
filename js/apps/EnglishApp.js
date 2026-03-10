@@ -54,7 +54,17 @@ export default {
             parsedContent: [], 
             isParsed: false    
         });
-
+        // [新增] 记录已经被魔法解码的单词集合
+        const decodedWords = ref(new Set());
+        const fetchDecodedWords = async () => {
+            try {
+                const res = await fetch('/api/ai/decoded-words');
+                if (res.ok) {
+                    const words = await res.json();
+                    decodedWords.value = new Set(words);
+                }
+            } catch (e) {}
+        };
         // --- 4. 错词本与艾宾浩斯 ---
         const showMistakeBook = ref(false);
         const mistakeList = ref([]);
@@ -176,7 +186,10 @@ export default {
             } catch (e) { }
         };
 
-        onMounted(() => loadMistakesData());
+        onMounted(() => { 
+            loadMistakesData(); 
+            fetchDecodedWords(); // [新增] 加载已解码列表
+        });
 
         const logMistake = async (item) => {
             if (!item || isEbbinghausReview.value) return; 
@@ -195,45 +208,102 @@ export default {
         // --- 业务逻辑 ---
         
         // AI 记忆解码
+        // [史诗级升级] AI 解码方法：支持本地缓存秒开与流式打字机效果
         const openMemoryDecoder = async (wordStr) => {
             decoderState.value = { show: true, isLoading: true, word: wordStr, content: '', parsedContent: [], isParsed: false };
+            decodedWords.value.add(wordStr);
+            // 封装的解析方法：将 AI 生成的完整文本拆解为酷炫三列卡片
+            const processContent = (text) => {
+                let cleanStr = text.replace(/```(html)?\n?/gi, '').replace(/```\n?/g, '');
+                const split1 = cleanStr.indexOf('🧩');
+                const split2 = cleanStr.indexOf('💡');
+                const split3 = cleanStr.indexOf('🎯');
+                
+                if (split1 !== -1 && split2 !== -1 && split3 !== -1) {
+                    const raw1 = cleanStr.substring(split1, split2);
+                    const raw2 = cleanStr.substring(split2, split3);
+                    const raw3 = cleanStr.substring(split3);
+                    const cleanPart = (str) => {
+                        let s = str.replace(/[\s\S]*?<\/b>[:：]?\s*/i, '');
+                        s = s.replace(/^(?:<\/p>|<br\s*\/?>)\s*/i, '');
+                        return s.trim();
+                    };
+                    decoderState.value.parsedContent = [
+                         { title: '词根词缀', icon: '🧩', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', content: cleanPart(raw1) },
+                         { title: '趣味记忆', icon: '💡', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', content: cleanPart(raw2) },
+                         { title: '黄金搭配', icon: '🎯', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', content: cleanPart(raw3) }
+                    ];
+                    decoderState.value.isParsed = true;
+                } else {
+                    cleanStr = cleanStr.replace(/<b>/gi, '<b class="text-amber-400 font-black px-1">');
+                    decoderState.value.content = cleanStr;
+                    decoderState.value.isParsed = false;
+                }
+            };
+
             try {
                 const res = await fetch('/api/ai/memory-decoder', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ word: wordStr })
                 });
-                const data = await res.json();
-                if (data.success) { 
-                    let text = data.content.replace(/```(html)?\n?/gi, '').replace(/```\n?/g, '');
-                    const split1 = text.indexOf('🧩');
-                    const split2 = text.indexOf('💡');
-                    const split3 = text.indexOf('🎯');
-                    if (split1 !== -1 && split2 !== -1 && split3 !== -1) {
-                        const raw1 = text.substring(split1, split2);
-                        const raw2 = text.substring(split2, split3);
-                        const raw3 = text.substring(split3);
-                        const cleanPart = (str) => {
-                            let s = str.replace(/[\s\S]*?<\/b>[:：]?\s*/i, '');
-                            s = s.replace(/^(?:<\/p>|<br\s*\/?>)\s*/i, '');
-                            return s.trim();
-                        };
-                        decoderState.value.parsedContent = [
-                             { title: '词根词缀', icon: '🧩', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30', content: cleanPart(raw1) },
-                             { title: '趣味记忆', icon: '💡', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', content: cleanPart(raw2) },
-                             { title: '黄金搭配', icon: '🎯', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', content: cleanPart(raw3) }
-                        ];
-                        decoderState.value.isParsed = true;
+                
+                const contentType = res.headers.get('content-type');
+                
+                // 【情况 1】如果是 JSON 格式，说明命中了本地缓存或发生了网络错误 (0秒秒开)
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await res.json();
+                    decoderState.value.isLoading = false; // 取消 Loading
+                    if (data.success) {
+                        processContent(data.content);
                     } else {
-                        text = text.replace(/<b>/gi, '<b class="text-amber-400 font-black px-1">');
-                        decoderState.value.content = text;
-                        decoderState.value.isParsed = false;
+                        decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">${data.error}</div>`;
                     }
                 } 
-                else { decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">${data.error}</div>`; }
+                // 【情况 2】如果是 Event Stream 格式，进入流式打字机模式
+                else {
+                    decoderState.value.isLoading = false; // 关闭转圈动画，准备开始打字
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let fullText = '';
+                    let buffer = '';
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        buffer += decoder.decode(value, { stream: true });
+                        const parts = buffer.split('\n\n');
+                        buffer = parts.pop(); // 保留不完整的最后一部分
+                        
+                        for (const part of parts) {
+                            if (part.startsWith('data: ')) {
+                                const dataStr = part.slice(6);
+                                if (dataStr === '[DONE]') continue;
+                                
+                                try {
+                                    const parsed = JSON.parse(dataStr);
+                                    if (parsed.error) {
+                                        decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">${parsed.error}</div>`;
+                                        break;
+                                    }
+                                    if (parsed.text) {
+                                        fullText += parsed.text;
+                                        // 实时渲染打字机效果：加上一个闪烁的光标
+                                        let displayStr = fullText.replace(/\n/g, '<br>');
+                                        decoderState.value.content = displayStr + '<span class="text-amber-400 animate-pulse ml-1 text-2xl">▎</span>';
+                                    }
+                                } catch (e) { /* 忽略解析截断带来的错误 */ }
+                            }
+                        }
+                    }
+                    // AI 全部输出完毕后，瞬间将文字拆解重构成极美的三列排版！
+                    processContent(fullText);
+                }
             } catch (err) {
+                decoderState.value.isLoading = false;
                 decoderState.value.content = `<div class="text-red-400 text-center py-4 text-xl">网络请求失败，请检查 Node.js Server 是否开启。</div>`;
-            } finally { decoderState.value.isLoading = false; }
+            }
         };
 
         const openCreateModal = () => { 
@@ -486,7 +556,7 @@ export default {
             showMistakeBook, mistakeList, mistakeGroups, selectedMistakeDate, sortedMistakeDates, openMistakeBook,
             ebbinghausReviewList, isEbbinghausReview, showEbbinghausModal, openEbbinghausModal, confirmEbbinghausReview,
             autoFillPhonetic: fetchPhonetic, isFetchingPhonetic: isFetching, handleUpdateAllPhonetics, isUpdatingPhonetics,
-            decoderState, openMemoryDecoder, speakWord: (word) => speak(word, 'en')
+            decoderState, openMemoryDecoder,decodedWords, speakWord: (word) => speak(word, 'en')
         };
     },
     template: `
@@ -672,19 +742,27 @@ export default {
                     <div class="flex-1 overflow-y-auto custom-scrollbar p-5 bg-slate-50/50">
                         
                         <div v-if="currentBook.type === 'word'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5 content-start">
-                            <div v-for="v in filteredVocab" :key="v.id" class="bg-white rounded-3xl p-5 border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col relative min-h-[150px] overflow-hidden">
-                                <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div v-for="v in filteredVocab" :key="v.id" 
+                                 class="rounded-3xl p-5 border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col relative min-h-[150px] overflow-hidden"
+                                 :class="decodedWords.has(v.word) ? 'bg-gradient-to-br from-amber-50/80 to-orange-50/30 border-amber-300/60' : 'bg-white border-slate-200/60'">
+                                
+                                <div class="absolute top-0 left-0 w-1 h-full transition-opacity duration-300"
+                                     :class="decodedWords.has(v.word) ? 'bg-gradient-to-b from-amber-400 to-orange-500 opacity-100' : 'bg-gradient-to-b from-indigo-400 to-purple-500 opacity-0 group-hover:opacity-100'"></div>
+                                
+                                <div v-if="decodedWords.has(v.word)" class="absolute top-3 right-3 text-amber-500/20 text-3xl pointer-events-none transition-transform group-hover:scale-110">
+                                    <i class="fas fa-magic"></i>
+                                </div>
                                 
                                 <template v-if="editingId !== v.id">
-                                    <div class="flex justify-between items-start mb-3">
-                                        <span class="text-[11px] font-mono text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">/ {{ v.phonetic || '...' }} /</span>
-                                        <span class="text-[10px] px-2 py-1 rounded-lg border font-bold tracking-wider uppercase bg-white" :class="getPosColor(v.pos)">{{ v.pos }}</span>
+                                    <div class="flex justify-between items-start mb-3 relative z-10">
+                                        <span class="text-[11px] font-mono text-slate-400 bg-white/60 backdrop-blur-sm px-2.5 py-1 rounded-lg border" :class="decodedWords.has(v.word) ? 'border-amber-200/50' : 'border-slate-100'">/ {{ v.phonetic || '...' }} /</span>
+                                        <span class="text-[10px] px-2 py-1 rounded-lg border font-bold tracking-wider uppercase bg-white/80 backdrop-blur-sm" :class="getPosColor(v.pos)">{{ v.pos }}</span>
                                     </div>
-                                    <div class="text-2xl font-black text-slate-800 truncate select-all mb-1.5 tracking-tight">{{ v.word }}</div>
-                                    <div class="text-sm text-slate-500 line-clamp-2 flex-1 font-medium">{{ v.meaning }}</div>
+                                    <div class="text-2xl font-black text-slate-800 truncate select-all mb-1.5 tracking-tight relative z-10">{{ v.word }}</div>
+                                    <div class="text-sm text-slate-500 line-clamp-2 flex-1 font-medium relative z-10">{{ v.meaning }}</div>
                                     
-                                    <div class="absolute bottom-4 right-4 flex gap-1.5 translate-y-6 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 bg-white/90 backdrop-blur-md shadow-sm border border-slate-100/50 p-1.5 rounded-2xl">
-                                        <button @click="openMemoryDecoder(v.word)" class="w-8 h-8 flex items-center justify-center text-amber-500 hover:bg-amber-400 hover:text-white rounded-xl transition-colors shadow-sm" title="AI 记忆解码"><i class="fas fa-lightbulb"></i></button>
+                                    <div class="absolute bottom-4 right-4 flex gap-1.5 translate-y-6 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 bg-white/90 backdrop-blur-md shadow-sm border border-slate-100/50 p-1.5 rounded-2xl z-20">
+                                        <button @click="openMemoryDecoder(v.word)" class="w-8 h-8 flex items-center justify-center transition-colors shadow-sm rounded-xl" :class="decodedWords.has(v.word) ? 'text-white bg-amber-400 hover:bg-amber-500' : 'text-amber-500 hover:bg-amber-400 hover:text-white'" :title="decodedWords.has(v.word) ? '查看魔法解码' : 'AI 记忆解码'"><i class="fas fa-lightbulb"></i></button>
                                         <button @click="speakWord(v.word)" class="w-8 h-8 flex items-center justify-center text-blue-500 hover:bg-blue-500 hover:text-white rounded-xl transition-colors shadow-sm" title="朗读此词"><i class="fas fa-volume-up"></i></button>
                                         <button @click="startEdit(v)" class="w-8 h-8 flex items-center justify-center text-indigo-500 hover:bg-indigo-500 hover:text-white rounded-xl transition-colors shadow-sm" title="编辑"><i class="fas fa-pen text-xs"></i></button>
                                         <button @click="$emit('deleteWord', v.id)" class="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors shadow-sm" title="删除"><i class="fas fa-trash-alt text-xs"></i></button>
@@ -692,15 +770,15 @@ export default {
                                 </template>
 
                                 <template v-else>
-                                    <div class="flex flex-col gap-2.5 h-full justify-center relative z-10 bg-white">
-                                        <input v-model="editForm.word" class="w-full px-3 py-1.5 border border-indigo-200 rounded-xl text-slate-700 font-bold outline-none focus:ring-2 ring-indigo-100 text-base transition bg-indigo-50/30">
+                                    <div class="flex flex-col gap-2.5 h-full justify-center relative z-20 bg-white/90 backdrop-blur-sm rounded-xl p-1">
+                                        <input v-model="editForm.word" class="w-full px-3 py-1.5 border border-indigo-200 rounded-xl text-slate-700 font-bold outline-none focus:ring-2 ring-indigo-100 text-base transition bg-white/50">
                                         <div class="flex gap-2">
-                                            <input v-model="editForm.phonetic" class="flex-1 px-3 py-1.5 border border-indigo-200 rounded-xl font-mono text-xs outline-none focus:ring-2 ring-indigo-100 transition bg-indigo-50/30" placeholder="音标">
-                                            <select v-model="editForm.pos" class="w-20 text-xs px-2 py-1.5 border border-indigo-200 rounded-xl outline-none focus:ring-2 ring-indigo-100 cursor-pointer bg-indigo-50/30 font-bold">
+                                            <input v-model="editForm.phonetic" class="flex-1 px-3 py-1.5 border border-indigo-200 rounded-xl font-mono text-xs outline-none focus:ring-2 ring-indigo-100 transition bg-white/50" placeholder="音标">
+                                            <select v-model="editForm.pos" class="w-20 text-xs px-2 py-1.5 border border-indigo-200 rounded-xl outline-none focus:ring-2 ring-indigo-100 cursor-pointer bg-white/50 font-bold">
                                                 <option v-for="o in posOptions" :value="o.value">{{ o.value }}</option>
                                             </select>
                                         </div>
-                                        <input v-model="editForm.meaning" class="w-full px-3 py-1.5 border border-indigo-200 rounded-xl outline-none focus:ring-2 ring-indigo-100 text-sm transition bg-indigo-50/30" @keyup.enter="saveEdit" placeholder="中文释义">
+                                        <input v-model="editForm.meaning" class="w-full px-3 py-1.5 border border-indigo-200 rounded-xl outline-none focus:ring-2 ring-indigo-100 text-sm transition bg-white/50" @keyup.enter="saveEdit" placeholder="中文释义">
                                         <div class="absolute -bottom-2 -right-2 flex gap-2">
                                             <button @click="saveEdit" class="w-10 h-10 flex items-center justify-center text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition"><i class="fas fa-check"></i></button>
                                             <button @click="cancelEdit" class="w-10 h-10 flex items-center justify-center text-white bg-slate-400 rounded-xl hover:bg-slate-500 shadow-lg shadow-slate-200 transition"><i class="fas fa-times"></i></button>
