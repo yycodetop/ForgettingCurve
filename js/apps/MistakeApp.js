@@ -13,6 +13,9 @@ export default {
         const isEditing = ref(false);
         const editingId = ref(null);
         
+        // 表单内照片切换标签页状态 ('mistake' | 'answer')
+        const formTab = ref('mistake'); 
+
         // 新版表单结构：区分错题图片（含遮挡）和答案图片
         const newMistakeForm = ref({ 
             recorder: '', title: '', subject: '', description: '', 
@@ -137,6 +140,7 @@ export default {
         const openAddModal = () => {
             isEditing.value = false;
             editingId.value = null;
+            formTab.value = 'mistake'; // 每次打开重置为错题照片页
             newMistakeForm.value = { recorder: '', title: '', subject: '', description: '', mistakeImages: [], answerImages: [] };
             showModal.value = true;
         };
@@ -144,6 +148,7 @@ export default {
         const openEditModal = (mistake) => {
             isEditing.value = true;
             editingId.value = mistake.id;
+            formTab.value = 'mistake'; // 每次打开重置为错题照片页
             
             // 兼容老数据结构
             const savedImages = mistake.images || {};
@@ -364,7 +369,7 @@ export default {
         onMounted(fetchMistakes);
 
         return {
-            mistakes, sortedMistakes, showModal, newMistakeForm, isEditing, filterSubject,
+            mistakes, sortedMistakes, showModal, newMistakeForm, isEditing, filterSubject, formTab,
             todaysReviews, getNextReviewInfo,
             viewerState, openViewer, closeViewer, switchViewerTab, currentViewerImagesList, nextImg, prevImg, toggleViewerMask, submitReviewLog,
             reviewLogsModal, openReviewLogsModal, closeReviewLogsModal,
@@ -576,45 +581,58 @@ export default {
                             <textarea v-model="newMistakeForm.description" rows="3" placeholder="描述错误原因和正确思路..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl resize-none"></textarea>
                         </div>
                         
-                        <div class="grid grid-cols-2 gap-6 pt-4 border-t border-slate-100">
-                            <div>
-                                <label class="block text-sm font-bold text-indigo-600 mb-2"><i class="fas fa-image"></i> 错题照片 (可添加遮挡)</label>
-                                <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 relative group text-center cursor-pointer hover:bg-slate-100 transition mb-3">
+                        <div class="pt-4 border-t border-slate-100">
+                            <div class="flex bg-slate-100/80 rounded-xl p-1 mb-4 w-full md:w-2/3 lg:w-1/2">
+                                <button @click="formTab = 'mistake'" :class="formTab === 'mistake' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition flex justify-center items-center gap-2">
+                                    <i class="fas fa-image"></i> 错题照片
+                                </button>
+                                <button @click="formTab = 'answer'" :class="formTab === 'answer' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition flex justify-center items-center gap-2">
+                                    <i class="fas fa-check-double"></i> 正确答案照片
+                                </button>
+                            </div>
+
+                            <div v-show="formTab === 'mistake'" class="animate-fade-in">
+                                <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 bg-slate-50 relative group text-center cursor-pointer hover:bg-slate-100 transition mb-4">
                                     <input type="file" multiple accept="image/*" @change="e => handleImageUpload(e, 'mistake')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                                    <i class="fas fa-camera text-2xl text-slate-400 mb-1"></i>
-                                    <p class="text-xs text-slate-500">上传原题/错误过程</p>
+                                    <div class="bg-indigo-100 text-indigo-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                                        <i class="fas fa-camera text-xl"></i>
+                                    </div>
+                                    <h4 class="font-bold text-slate-700 mb-1">上传错题原题 / 错误过程照片</h4>
+                                    <p class="text-xs text-slate-500">上传后可点击照片【添加遮挡】</p>
                                 </div>
-                                <div v-if="newMistakeForm.mistakeImages.length > 0" class="grid grid-cols-2 gap-2">
-                                    <div v-for="(img, idx) in newMistakeForm.mistakeImages" :key="'m-'+idx" class="relative group aspect-square rounded-lg border border-slate-200 overflow-hidden bg-slate-800">
-                                        <img :src="img.url" class="w-full h-full object-cover opacity-80 group-hover:opacity-50 transition">
-                                        <div class="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition z-20">
-                                            <button @click.stop="openOccEditor(idx)" class="bg-indigo-500 text-white text-xs px-3 py-1 rounded-full mb-2 hover:bg-indigo-600"><i class="fas fa-mask"></i> 编辑遮挡</button>
-                                            <button @click.stop="removeMistakeImage(idx)" class="bg-red-500 text-white text-xs px-3 py-1 rounded-full hover:bg-red-600"><i class="fas fa-trash"></i> 删除照片</button>
+                                <div v-if="newMistakeForm.mistakeImages.length > 0" class="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                    <div v-for="(img, idx) in newMistakeForm.mistakeImages" :key="'m-'+idx" class="relative group aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-800 shadow-sm hover:shadow-md transition">
+                                        <img :src="img.url" class="w-full h-full object-cover opacity-80 group-hover:opacity-40 transition duration-300">
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 z-20">
+                                            <button @click.stop="openOccEditor(idx)" class="bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-full mb-2 hover:bg-indigo-600 shadow-md transform hover:scale-105 transition"><i class="fas fa-mask mr-1"></i>编辑遮挡</button>
+                                            <button @click.stop="removeMistakeImage(idx)" class="bg-red-500 text-white text-xs px-3 py-1.5 rounded-full hover:bg-red-600 shadow-md transform hover:scale-105 transition"><i class="fas fa-trash mr-1"></i>删除照片</button>
                                         </div>
-                                        <div v-if="img.masks && img.masks.length" class="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm pointer-events-none">{{ img.masks.length }} 遮挡</div>
+                                        <div v-if="img.masks && img.masks.length" class="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-md backdrop-blur-sm pointer-events-none shadow-sm">{{ img.masks.length }} 个遮挡</div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-bold text-emerald-600 mb-2"><i class="fas fa-check-double"></i> 正确答案照片 (可选)</label>
-                                <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 relative group text-center cursor-pointer hover:bg-slate-100 transition mb-3">
+                            <div v-show="formTab === 'answer'" class="animate-fade-in">
+                                <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 bg-slate-50 relative group text-center cursor-pointer hover:bg-slate-100 transition mb-4">
                                     <input type="file" multiple accept="image/*" @change="e => handleImageUpload(e, 'answer')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                                    <i class="fas fa-file-image text-2xl text-slate-400 mb-1"></i>
-                                    <p class="text-xs text-slate-500">上传正确解法/标准答案</p>
+                                    <div class="bg-emerald-100 text-emerald-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                                        <i class="fas fa-file-image text-xl"></i>
+                                    </div>
+                                    <h4 class="font-bold text-slate-700 mb-1">上传正确解法 / 标准答案照片</h4>
+                                    <p class="text-xs text-slate-500">选填：作为复习核对的参考</p>
                                 </div>
-                                <div v-if="newMistakeForm.answerImages.length > 0" class="grid grid-cols-2 gap-2">
-                                    <div v-for="(img, idx) in newMistakeForm.answerImages" :key="'a-'+idx" class="relative group aspect-square rounded-lg border border-slate-200 overflow-hidden bg-slate-800">
-                                        <img :src="img" class="w-full h-full object-cover">
-                                        <button @click.stop="removeAnswerImage(idx)" class="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 z-20 transition"><i class="fas fa-times"></i></button>
+                                <div v-if="newMistakeForm.answerImages.length > 0" class="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                    <div v-for="(img, idx) in newMistakeForm.answerImages" :key="'a-'+idx" class="relative group aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-800 shadow-sm hover:shadow-md transition">
+                                        <img :src="img" class="w-full h-full object-cover group-hover:opacity-80 transition duration-300">
+                                        <button @click.stop="removeAnswerImage(idx)" class="absolute top-2 right-2 bg-red-500/90 hover:bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 z-20 transition shadow-md transform hover:scale-110"><i class="fas fa-times"></i></button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="flex gap-4 mt-8">
-                        <button @click="showModal=false" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">取消</button>
-                        <button @click="submitMistake" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">{{ isEditing ? '保存修改 (不影响计划)' : '保存并生成计划' }}</button>
+                    <div class="flex gap-4 mt-8 pt-6 border-t border-slate-100">
+                        <button @click="showModal=false" class="flex-1 py-3.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">取消</button>
+                        <button @click="submitMistake" class="flex-1 py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">{{ isEditing ? '保存修改 (不影响计划)' : '保存并生成计划' }}</button>
                     </div>
                 </div>
             </div>
