@@ -9,26 +9,37 @@ export default {
     setup(props, { emit }) {
         const mistakes = ref([]);
         const showModal = ref(false);
-        
-        // [新增] 学科筛选状态
         const filterSubject = ref('');
-
         const isEditing = ref(false);
         const editingId = ref(null);
-        const newMistakeForm = ref({ recorder: '', title: '', subject: '', description: '', images: [] });
+        
+        // 新版表单结构：区分错题图片（含遮挡）和答案图片
+        const newMistakeForm = ref({ 
+            recorder: '', title: '', subject: '', description: '', 
+            mistakeImages: [], // [{ url: '...', masks: [{x,y,w,h,r}] }]
+            answerImages: []   // ['...']
+        });
         
         const reviewLogsModal = ref({ show: false, mistake: null });
-        const openReviewLogsModal = (mistake) => {
-            reviewLogsModal.value = { show: true, mistake };
-        };
-        const closeReviewLogsModal = () => {
-            reviewLogsModal.value.show = false;
-        };
+        const openReviewLogsModal = (mistake) => { reviewLogsModal.value = { show: true, mistake }; };
+        const closeReviewLogsModal = () => { reviewLogsModal.value.show = false; };
 
+        // 遮挡编辑器状态
+        const occEditor = ref({ show: false, index: -1, url: '', masks: [] });
+        const occImageContainer = ref(null);
+        const isDrawingOcc = ref(false);
+        const drawStartOcc = ref({ x: 0, y: 0 });
+        const activeDrawingOcc = ref(null);
+
+        // 查看器状态
         const viewerState = ref({
             show: false,
             mistake: null,
+            tab: 'mistake', // 'mistake' | 'answer'
+            mImages: [],
+            aImages: [],
             imgIndex: 0,
+            masksStatus: [],
             reflectionForm: ''
         });
 
@@ -46,44 +57,114 @@ export default {
             try {
                 const res = await fetch('/api/mistakelog');
                 if (res.ok) mistakes.value = await res.json();
-            } catch (err) {
-                console.error("加载错题失败", err);
-            }
+            } catch (err) { console.error("加载错题失败", err); }
         };
 
-        const handleImageUpload = (event) => {
+        const handleImageUpload = (event, type) => {
             const files = Array.from(event.target.files);
-            const maxSize = 5 * 1024 * 1024; // 5MB
+            const maxSize = 5 * 1024 * 1024;
             files.forEach(file => {
                 if (file.size > maxSize) {
                     alert(`图片 ${file.name} 超过 5MB 限制！`);
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => newMistakeForm.value.images.push(e.target.result);
+                reader.onload = (e) => {
+                    if (type === 'mistake') {
+                        newMistakeForm.value.mistakeImages.push({ url: e.target.result, masks: [] });
+                    } else {
+                        newMistakeForm.value.answerImages.push(e.target.result);
+                    }
+                };
                 reader.readAsDataURL(file);
             });
+            event.target.value = '';
         };
 
-        const removeImage = (index) => newMistakeForm.value.images.splice(index, 1);
+        const removeMistakeImage = (index) => newMistakeForm.value.mistakeImages.splice(index, 1);
+        const removeAnswerImage = (index) => newMistakeForm.value.answerImages.splice(index, 1);
 
+        // --- 遮挡编辑逻辑 ---
+        const openOccEditor = (index) => {
+            const item = newMistakeForm.value.mistakeImages[index];
+            occEditor.value = { 
+                show: true, index, url: item.url, 
+                masks: JSON.parse(JSON.stringify(item.masks || [])) 
+            };
+        };
+        const closeOccEditor = () => { occEditor.value.show = false; };
+        const saveOccEditor = () => {
+            newMistakeForm.value.mistakeImages[occEditor.value.index].masks = occEditor.value.masks;
+            closeOccEditor();
+        };
+        const startDrawOcc = (e) => {
+            if (!occImageContainer.value) return;
+            e.preventDefault();
+            isDrawingOcc.value = true;
+            drawStartOcc.value = { x: e.clientX, y: e.clientY };
+            const rect = occImageContainer.value.getBoundingClientRect();
+            activeDrawingOcc.value = {
+                x: ((e.clientX - rect.left) / rect.width) * 100,
+                y: ((e.clientY - rect.top) / rect.height) * 100,
+                w: 0, h: 0, r: 0
+            };
+        };
+        const handleMouseMoveOcc = (e) => {
+            if (isDrawingOcc.value && activeDrawingOcc.value && occImageContainer.value) {
+                const rect = occImageContainer.value.getBoundingClientRect();
+                const minX = Math.min(drawStartOcc.value.x, e.clientX) - rect.left;
+                const minY = Math.min(drawStartOcc.value.y, e.clientY) - rect.top;
+                const width = Math.abs(e.clientX - drawStartOcc.value.x);
+                const height = Math.abs(e.clientY - drawStartOcc.value.y);
+                activeDrawingOcc.value.x = (minX / rect.width) * 100;
+                activeDrawingOcc.value.y = (minY / rect.height) * 100;
+                activeDrawingOcc.value.w = (width / rect.width) * 100;
+                activeDrawingOcc.value.h = (height / rect.height) * 100;
+            }
+        };
+        const handleMouseUpOcc = () => {
+            if (isDrawingOcc.value) {
+                isDrawingOcc.value = false;
+                if (activeDrawingOcc.value && activeDrawingOcc.value.w > 0.5 && activeDrawingOcc.value.h > 0.5) {
+                    occEditor.value.masks.push({ ...activeDrawingOcc.value });
+                }
+                activeDrawingOcc.value = null;
+            }
+        };
+        const removeOccMask = (idx) => occEditor.value.masks.splice(idx, 1);
+
+        // --- 表单与提交逻辑 ---
         const openAddModal = () => {
             isEditing.value = false;
             editingId.value = null;
-            newMistakeForm.value = { recorder: '', title: '', subject: '', description: '', images: [] };
+            newMistakeForm.value = { recorder: '', title: '', subject: '', description: '', mistakeImages: [], answerImages: [] };
             showModal.value = true;
         };
 
         const openEditModal = (mistake) => {
             isEditing.value = true;
             editingId.value = mistake.id;
-            newMistakeForm.value = JSON.parse(JSON.stringify({
+            
+            // 兼容老数据结构
+            const savedImages = mistake.images || {};
+            let mImages = [];
+            let aImages = [];
+            
+            if (Array.isArray(savedImages)) {
+                mImages = savedImages.map(url => ({ url, masks: [] }));
+            } else {
+                mImages = savedImages.mistake ? JSON.parse(JSON.stringify(savedImages.mistake)) : [];
+                aImages = savedImages.answer ? [...savedImages.answer] : [];
+            }
+
+            newMistakeForm.value = {
                 recorder: mistake.recorder || '',
                 title: mistake.title || '',
                 subject: mistake.subject || '',
                 description: mistake.description || '',
-                images: mistake.images || []
-            }));
+                mistakeImages: mImages,
+                answerImages: aImages
+            };
             showModal.value = true;
         };
 
@@ -104,12 +185,23 @@ export default {
                 return;
             }
 
+            const payload = {
+                recorder: newMistakeForm.value.recorder,
+                title: newMistakeForm.value.title,
+                subject: newMistakeForm.value.subject,
+                description: newMistakeForm.value.description,
+                images: {
+                    mistake: newMistakeForm.value.mistakeImages,
+                    answer: newMistakeForm.value.answerImages
+                }
+            };
+
             if (isEditing.value) {
                 try {
                     const res = await fetch(`/api/mistakelog/${editingId.value}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newMistakeForm.value)
+                        body: JSON.stringify(payload)
                     });
                     if (res.ok) {
                         const updatedMistake = await res.json();
@@ -123,7 +215,7 @@ export default {
                 const newRecord = {
                     date: today,
                     ebbinghausSchedule: generateEbbinghaus(today),
-                    ...newMistakeForm.value
+                    ...payload
                 };
 
                 try {
@@ -138,8 +230,8 @@ export default {
                         mistakes.value.unshift(savedMistake);
 
                         emit('create-ebbinghaus-task', {
-                            title: `📓 复习错题: ${newMistakeForm.value.subject} - ${newMistakeForm.value.title}`,
-                            category: newMistakeForm.value.subject,
+                            title: `📓 复习错题: ${payload.subject} - ${payload.title}`,
+                            category: payload.subject,
                             startDate: today,
                             type: 'ebbinghaus',
                             linkedMistakeId: savedMistake.id
@@ -150,33 +242,20 @@ export default {
             }
         };
 
-        // --- 核心更新：在排序前先进行学科过滤 ---
         const sortedMistakes = computed(() => {
             const today = new Date().toISOString().split('T')[0];
-            
-            // 1. 过滤学科
             let filteredList = mistakes.value;
-            if (filterSubject.value) {
-                filteredList = mistakes.value.filter(m => m.subject === filterSubject.value);
-            }
+            if (filterSubject.value) filteredList = mistakes.value.filter(m => m.subject === filterSubject.value);
 
-            // 2. 排序
             return [...filteredList].sort((a, b) => {
                 const getNextDateTimestamp = (mistake) => {
                     const schedule = mistake.ebbinghausSchedule || [];
                     const nextDateStr = schedule.find(d => d >= today);
-                    // 如果已经没有下次复习日期（复习完结），返回 Infinity 把它排到最后
                     return nextDateStr ? new Date(nextDateStr).getTime() : Infinity;
                 };
-                
                 const timeA = getNextDateTimestamp(a);
                 const timeB = getNextDateTimestamp(b);
-                
-                // 如果复习日期相同，则把最新录入的排在前面
-                if (timeA === timeB) {
-                    return new Date(b.date).getTime() - new Date(a.date).getTime();
-                }
-                
+                if (timeA === timeB) return new Date(b.date).getTime() - new Date(a.date).getTime();
                 return timeA - timeB;
             });
         });
@@ -196,25 +275,66 @@ export default {
             const today = new Date().toISOString().split('T')[0];
             const schedule = mistake.ebbinghausSchedule || [];
             const nextDate = schedule.find(d => d >= today);
-            
             if (!nextDate) return '复习已完结';
-            
-            const diffTime = new Date(nextDate) - new Date(today);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
+            const diffDays = Math.ceil((new Date(nextDate) - new Date(today)) / (1000 * 60 * 60 * 24));
             if (diffDays === 0) return `今天 (${nextDate})`;
             return `${diffDays}天后 (${nextDate})`;
         };
 
+        // --- 查看器与复习逻辑 ---
         const openViewer = (mistake) => {
-            viewerState.value = { show: true, mistake, imgIndex: 0, reflectionForm: '' };
+            const savedImages = mistake.images || {};
+            let mImages = [];
+            let aImages = [];
+            
+            if (Array.isArray(savedImages)) {
+                mImages = savedImages.map(url => ({ url, masks: [] }));
+            } else {
+                mImages = savedImages.mistake ? JSON.parse(JSON.stringify(savedImages.mistake)) : [];
+                aImages = savedImages.answer ? [...savedImages.answer] : [];
+            }
+
+            viewerState.value = { 
+                show: true, mistake, mImages, aImages,
+                tab: 'mistake', imgIndex: 0, reflectionForm: '',
+                masksStatus: (mImages[0] && mImages[0].masks) ? mImages[0].masks.map(m => ({ ...m, visible: true })) : []
+            };
         };
         const closeViewer = () => viewerState.value.show = false;
+        
+        const switchViewerTab = (tab) => {
+            viewerState.value.tab = tab;
+            viewerState.value.imgIndex = 0;
+            if (tab === 'mistake') {
+                const m = viewerState.value.mImages[0];
+                viewerState.value.masksStatus = (m && m.masks) ? m.masks.map(mask => ({ ...mask, visible: true })) : [];
+            }
+        };
+
+        const currentViewerImagesList = computed(() => {
+            return viewerState.value.tab === 'mistake' ? viewerState.value.mImages : viewerState.value.aImages;
+        });
+
         const nextImg = () => {
-            if (viewerState.value.imgIndex < viewerState.value.mistake.images.length - 1) viewerState.value.imgIndex++;
+            if (viewerState.value.imgIndex < currentViewerImagesList.value.length - 1) {
+                viewerState.value.imgIndex++;
+                if (viewerState.value.tab === 'mistake') {
+                    const m = viewerState.value.mImages[viewerState.value.imgIndex];
+                    viewerState.value.masksStatus = (m && m.masks) ? m.masks.map(mask => ({ ...mask, visible: true })) : [];
+                }
+            }
         };
         const prevImg = () => {
-            if (viewerState.value.imgIndex > 0) viewerState.value.imgIndex--;
+            if (viewerState.value.imgIndex > 0) {
+                viewerState.value.imgIndex--;
+                if (viewerState.value.tab === 'mistake') {
+                    const m = viewerState.value.mImages[viewerState.value.imgIndex];
+                    viewerState.value.masksStatus = (m && m.masks) ? m.masks.map(mask => ({ ...mask, visible: true })) : [];
+                }
+            }
+        };
+        const toggleViewerMask = (idx) => {
+            viewerState.value.masksStatus[idx].visible = !viewerState.value.masksStatus[idx].visible;
         };
 
         const submitReviewLog = async () => {
@@ -238,21 +358,20 @@ export default {
                     if(idx !== -1) mistakes.value[idx] = updatedMistake;
                     closeViewer();
                 }
-            } catch (err) {
-                console.error("保存日志失败", err);
-            }
+            } catch (err) { console.error("保存日志失败", err); }
         };
 
         onMounted(fetchMistakes);
 
         return {
-            mistakes, sortedMistakes, showModal, newMistakeForm, isEditing,
-            filterSubject, // [新增] 导出给模板使用
+            mistakes, sortedMistakes, showModal, newMistakeForm, isEditing, filterSubject,
             todaysReviews, getNextReviewInfo,
-            viewerState, openViewer, closeViewer, nextImg, prevImg, submitReviewLog,
+            viewerState, openViewer, closeViewer, switchViewerTab, currentViewerImagesList, nextImg, prevImg, toggleViewerMask, submitReviewLog,
             reviewLogsModal, openReviewLogsModal, closeReviewLogsModal,
-            handleImageUpload, removeImage, submitMistake,
-            openAddModal, openEditModal, deleteMistake
+            handleImageUpload, removeMistakeImage, removeAnswerImage, submitMistake,
+            openAddModal, openEditModal, deleteMistake,
+            occEditor, occImageContainer, openOccEditor, closeOccEditor, saveOccEditor,
+            startDrawOcc, handleMouseMoveOcc, handleMouseUpOcc, removeOccMask, activeDrawingOcc
         };
     },
     template: `
@@ -346,12 +465,10 @@ export default {
                         </h3>
                         <button @click="closeReviewLogsModal" class="text-slate-400 hover:text-red-500 transition"><i class="fas fa-times text-xl"></i></button>
                     </div>
-
                     <div class="mb-4 pb-4 border-b border-slate-100">
                         <div class="text-xs text-slate-500 mb-1">错题标题:</div>
                         <div class="font-bold text-slate-800">{{ reviewLogsModal.mistake.title }}</div>
                     </div>
-
                     <div class="flex-1 overflow-y-auto custom-scrollbar pr-2">
                         <ul v-if="reviewLogsModal.mistake.reviewLogs && reviewLogsModal.mistake.reviewLogs.length" class="space-y-4">
                             <li v-for="(log, idx) in reviewLogsModal.mistake.reviewLogs" :key="idx" class="bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-sm">
@@ -367,7 +484,6 @@ export default {
                             <p class="text-sm">这条错题还没有复习记录哦</p>
                         </div>
                     </div>
-                    
                     <div class="mt-6 pt-4 border-t border-slate-100">
                         <button @click="closeReviewLogsModal" class="w-full py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition">关闭</button>
                     </div>
@@ -375,34 +491,57 @@ export default {
             </div>
 
             <div v-if="viewerState.show" class="fixed inset-0 bg-slate-900/95 z-[100] flex flex-col items-center animate-fade-in backdrop-blur-sm">
-                <div class="w-full p-6 flex justify-between items-center">
+                <div class="w-full p-6 flex justify-between items-center shrink-0">
                     <div class="text-white">
                         <span class="bg-indigo-500 px-3 py-1 rounded-lg text-sm font-bold mr-3">{{ viewerState.mistake.subject }}</span>
                         <span class="text-xl font-bold">{{ viewerState.mistake.title }}</span>
+                    </div>
+                    <div class="flex bg-slate-800/80 rounded-xl p-1 shadow-inner gap-1">
+                        <button @click="switchViewerTab('mistake')" :class="viewerState.tab === 'mistake' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-white'" class="px-6 py-2 rounded-lg text-sm font-bold transition">
+                            <i class="fas fa-image mr-1"></i> 错题照片
+                        </button>
+                        <button @click="switchViewerTab('answer')" :class="viewerState.tab === 'answer' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:text-white'" class="px-6 py-2 rounded-lg text-sm font-bold transition">
+                            <i class="fas fa-check-double mr-1"></i> 正确答案
+                        </button>
                     </div>
                     <button @click="closeViewer" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full text-white flex items-center justify-center transition"><i class="fas fa-times text-xl"></i></button>
                 </div>
 
                 <div class="flex-1 w-full flex items-center justify-center relative px-16 min-h-0">
-                    <button v-if="viewerState.mistake.images && viewerState.mistake.images.length > 1" @click="prevImg" :class="{'opacity-30 cursor-not-allowed': viewerState.imgIndex === 0}" class="absolute left-6 w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition z-10"><i class="fas fa-chevron-left text-2xl"></i></button>
+                    <button v-if="currentViewerImagesList.length > 1" @click="prevImg" :class="{'opacity-30 cursor-not-allowed': viewerState.imgIndex === 0}" class="absolute left-6 w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition z-10"><i class="fas fa-chevron-left text-2xl"></i></button>
 
-                    <div v-if="!viewerState.mistake.images || viewerState.mistake.images.length === 0" class="text-slate-500 text-lg flex flex-col items-center">
-                        <i class="fas fa-image text-4xl mb-3 opacity-50"></i> 该错题未上传图片
+                    <div v-if="currentViewerImagesList.length === 0" class="text-slate-500 text-lg flex flex-col items-center">
+                        <i class="fas fa-box-open text-4xl mb-3 opacity-50"></i> 该分类未上传照片
                     </div>
-                    <img v-else :src="viewerState.mistake.images[viewerState.imgIndex]" class="max-w-full max-h-full object-contain rounded-xl shadow-2xl ring-1 ring-white/10">
-
-                    <button v-if="viewerState.mistake.images && viewerState.mistake.images.length > 1" @click="nextImg" :class="{'opacity-30 cursor-not-allowed': viewerState.imgIndex === viewerState.mistake.images.length - 1}" class="absolute right-6 w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition z-10"><i class="fas fa-chevron-right text-2xl"></i></button>
                     
-                    <div v-if="viewerState.mistake.images && viewerState.mistake.images.length > 1" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 px-4 py-1.5 rounded-full text-white/80 text-sm tracking-widest font-mono">
-                        {{ viewerState.imgIndex + 1 }} / {{ viewerState.mistake.images.length }}
+                    <div v-else class="relative inline-block shadow-2xl rounded-lg overflow-hidden select-none">
+                        <img v-if="viewerState.tab === 'mistake'" :src="viewerState.mImages[viewerState.imgIndex].url" class="max-h-[70vh] max-w-full block" draggable="false">
+                        <img v-else :src="viewerState.aImages[viewerState.imgIndex]" class="max-h-[70vh] max-w-full block" draggable="false">
+
+                        <template v-if="viewerState.tab === 'mistake'">
+                            <div v-for="(mask, idx) in viewerState.masksStatus" :key="idx"
+                                class="absolute border transition-all duration-300 cursor-pointer shadow-sm flex items-center justify-center"
+                                :class="mask.visible ? 'bg-orange-500 border-orange-400 opacity-100' : 'bg-transparent border-emerald-400/50 opacity-100 hover:bg-emerald-500/10'"
+                                :style="{ left: mask.x + '%', top: mask.y + '%', width: mask.w + '%', height: mask.h + '%', transform: 'rotate(' + (mask.r || 0) + 'deg)', transformOrigin: 'center center' }"
+                                @click="toggleViewerMask(idx)"
+                            >
+                                <span v-if="mask.visible" class="text-white font-bold drop-shadow-md text-sm"><i class="fas fa-eye-slash"></i></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <button v-if="currentViewerImagesList.length > 1" @click="nextImg" :class="{'opacity-30 cursor-not-allowed': viewerState.imgIndex === currentViewerImagesList.length - 1}" class="absolute right-6 w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition z-10"><i class="fas fa-chevron-right text-2xl"></i></button>
+                    
+                    <div v-if="currentViewerImagesList.length > 1" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 px-4 py-1.5 rounded-full text-white/80 text-sm tracking-widest font-mono">
+                        {{ viewerState.imgIndex + 1 }} / {{ currentViewerImagesList.length }}
                     </div>
                 </div>
 
-                <div class="w-full max-w-4xl p-6 mb-6">
+                <div class="w-full max-w-4xl p-6 mb-6 shrink-0">
                     <div class="bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-slate-700 flex gap-4 items-end shadow-2xl">
                         <div class="flex-1">
                             <label class="block text-indigo-300 text-xs font-bold mb-2 uppercase tracking-wider"><i class="fas fa-pen-nib mr-1"></i> 填写复习日志</label>
-                            <textarea v-model="viewerState.reflectionForm" class="w-full bg-slate-900/50 text-white border border-slate-700 rounded-xl p-3 resize-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" rows="2" placeholder="写下这次重新解答的思路和反思..."></textarea>
+                            <textarea v-model="viewerState.reflectionForm" class="w-full bg-slate-900/50 text-white border border-slate-700 rounded-xl p-3 resize-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" rows="2" placeholder="已核对答案？写下这次重新解答的思路和反思..."></textarea>
                         </div>
                         <button @click="submitReviewLog" class="h-[74px] px-8 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-indigo-900/50 whitespace-nowrap">
                             <i class="fas fa-check-circle text-xl"></i> 标记复习完成
@@ -412,7 +551,7 @@ export default {
             </div>
 
             <div v-if="showModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
-                <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl p-8 scale-up max-h-[90vh] overflow-y-auto">
+                <div class="bg-white rounded-3xl w-full max-w-3xl shadow-2xl p-8 scale-up max-h-[90vh] overflow-y-auto custom-scrollbar">
                     <h3 class="text-2xl font-bold mb-6 text-slate-800">{{ isEditing ? '✏️ 编辑错题' : '✨ 录入新错题' }}</h3>
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
@@ -427,7 +566,7 @@ export default {
                             </select>
                         </div>
                     </div>
-                    <div class="space-y-4">
+                    <div class="space-y-5">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">错题标题 <span class="text-red-400">*</span></label>
                             <input v-model="newMistakeForm.title" placeholder="例如: 期中考试附加题" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800">
@@ -436,27 +575,85 @@ export default {
                             <label class="block text-xs font-bold text-slate-500 mb-1">错题描述与反思 <span class="text-red-400">*</span></label>
                             <textarea v-model="newMistakeForm.description" rows="3" placeholder="描述错误原因和正确思路..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl resize-none"></textarea>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">上传照片 (单张≤5MB)</label>
-                            <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 relative group text-center cursor-pointer hover:bg-slate-100 transition">
-                                <input type="file" multiple accept="image/*" @change="handleImageUpload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
-                                <i class="fas fa-camera text-2xl text-slate-400 mb-2"></i>
-                                <p class="text-xs text-slate-500">点击或拖拽上传原题/解答照片</p>
+                        
+                        <div class="grid grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                            <div>
+                                <label class="block text-sm font-bold text-indigo-600 mb-2"><i class="fas fa-image"></i> 错题照片 (可添加遮挡)</label>
+                                <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 relative group text-center cursor-pointer hover:bg-slate-100 transition mb-3">
+                                    <input type="file" multiple accept="image/*" @change="e => handleImageUpload(e, 'mistake')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                    <i class="fas fa-camera text-2xl text-slate-400 mb-1"></i>
+                                    <p class="text-xs text-slate-500">上传原题/错误过程</p>
+                                </div>
+                                <div v-if="newMistakeForm.mistakeImages.length > 0" class="grid grid-cols-2 gap-2">
+                                    <div v-for="(img, idx) in newMistakeForm.mistakeImages" :key="'m-'+idx" class="relative group aspect-square rounded-lg border border-slate-200 overflow-hidden bg-slate-800">
+                                        <img :src="img.url" class="w-full h-full object-cover opacity-80 group-hover:opacity-50 transition">
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition z-20">
+                                            <button @click.stop="openOccEditor(idx)" class="bg-indigo-500 text-white text-xs px-3 py-1 rounded-full mb-2 hover:bg-indigo-600"><i class="fas fa-mask"></i> 编辑遮挡</button>
+                                            <button @click.stop="removeMistakeImage(idx)" class="bg-red-500 text-white text-xs px-3 py-1 rounded-full hover:bg-red-600"><i class="fas fa-trash"></i> 删除照片</button>
+                                        </div>
+                                        <div v-if="img.masks && img.masks.length" class="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm pointer-events-none">{{ img.masks.length }} 遮挡</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div v-if="newMistakeForm.images.length > 0" class="mt-3 grid grid-cols-5 gap-2">
-                                <div v-for="(img, idx) in newMistakeForm.images" :key="'img-'+idx" class="relative group aspect-square rounded-lg border border-slate-200 overflow-hidden">
-                                    <img :src="img" class="w-full h-full object-cover">
-                                    <button @click.stop="removeImage(idx)" class="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 z-20 transition"><i class="fas fa-times"></i></button>
+
+                            <div>
+                                <label class="block text-sm font-bold text-emerald-600 mb-2"><i class="fas fa-check-double"></i> 正确答案照片 (可选)</label>
+                                <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 bg-slate-50 relative group text-center cursor-pointer hover:bg-slate-100 transition mb-3">
+                                    <input type="file" multiple accept="image/*" @change="e => handleImageUpload(e, 'answer')" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                    <i class="fas fa-file-image text-2xl text-slate-400 mb-1"></i>
+                                    <p class="text-xs text-slate-500">上传正确解法/标准答案</p>
+                                </div>
+                                <div v-if="newMistakeForm.answerImages.length > 0" class="grid grid-cols-2 gap-2">
+                                    <div v-for="(img, idx) in newMistakeForm.answerImages" :key="'a-'+idx" class="relative group aspect-square rounded-lg border border-slate-200 overflow-hidden bg-slate-800">
+                                        <img :src="img" class="w-full h-full object-cover">
+                                        <button @click.stop="removeAnswerImage(idx)" class="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 z-20 transition"><i class="fas fa-times"></i></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="flex gap-4 mt-8">
                         <button @click="showModal=false" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">取消</button>
-                        <button @click="submitMistake" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">{{ isEditing ? '保存修改 (不影响复习计划)' : '保存并生成计划' }}</button>
+                        <button @click="submitMistake" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">{{ isEditing ? '保存修改 (不影响计划)' : '保存并生成计划' }}</button>
                     </div>
                 </div>
             </div>
+
+            <div v-if="occEditor.show" class="fixed inset-0 bg-slate-900/95 z-[110] flex flex-col animate-fade-in text-white backdrop-blur-md">
+                <div class="h-16 px-6 border-b border-white/10 flex justify-between items-center bg-slate-900 shrink-0">
+                    <div class="flex items-center gap-4">
+                        <button @click="closeOccEditor" class="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+                        <h3 class="font-bold text-lg">编辑错题图片遮挡</h3>
+                        <span class="text-xs text-slate-400 ml-4">在图片上 <span class="text-indigo-400 font-bold">按住左键拖动</span> 绘制遮盖区域掩盖答案</span>
+                    </div>
+                    <button @click="saveOccEditor" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg transition transform active:scale-95">完成遮挡</button>
+                </div>
+                
+                <div class="flex-1 bg-slate-950 relative overflow-hidden flex items-center justify-center p-8 select-none"
+                     @mousemove="handleMouseMoveOcc" 
+                     @mouseup="handleMouseUpOcc" 
+                     @mouseleave="handleMouseUpOcc">
+                    
+                    <div class="relative inline-block shadow-2xl rounded-lg overflow-hidden cursor-crosshair" 
+                         @mousedown="startDrawOcc" 
+                         ref="occImageContainer">
+                        
+                        <img :src="occEditor.url" class="max-h-[80vh] max-w-full block select-none pointer-events-none" draggable="false">
+                        
+                        <div v-for="(mask, idx) in occEditor.masks" :key="idx" 
+                             class="absolute bg-orange-500/80 border border-orange-300 shadow-sm flex items-center justify-center group z-10" 
+                             :style="{ left: mask.x + '%', top: mask.y + '%', width: mask.w + '%', height: mask.h + '%', transform: 'rotate(' + (mask.r || 0) + 'deg)', transformOrigin: 'center center' }">
+                            
+                            <button @click.stop="removeOccMask(idx)" class="absolute -top-3 -right-3 w-6 h-6 bg-red-500 rounded-full text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600 z-20">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div v-if="activeDrawingOcc" class="absolute bg-blue-500/40 border border-blue-300 z-20 pointer-events-none" :style="{ left: activeDrawingOcc.x + '%', top: activeDrawingOcc.y + '%', width: activeDrawingOcc.w + '%', height: activeDrawingOcc.h + '%', transform: 'rotate(' + (activeDrawingOcc.r || 0) + 'deg)', transformOrigin: 'center center' }"></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     `
 }
